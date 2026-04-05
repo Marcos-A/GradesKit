@@ -28,6 +28,11 @@ STRATEGY_AVERAGE = "average"
 STRATEGY_WEIGHTED = "weighted"
 VALID_STRATEGIES = {STRATEGY_HIGHEST, STRATEGY_AVERAGE, STRATEGY_WEIGHTED}
 FILE_NAME_SUFFIX = "-qualificacions.csv"
+UNRECOGNIZED_CSV_MESSAGE = (
+    "Ep! No hem pogut reconèixer els fitxers triats. "
+    "Comprova que siguin exportacions de qualificacions de Moodle "
+    "i que corresponguin a la versió en català."
+)
 
 
 @dataclass
@@ -163,6 +168,25 @@ def _column_index(header: list[str], marker: str) -> int:
     raise ValueError(f"No s'ha trobat cap columna que contingui '{marker}'.")
 
 
+def _column_indices_from_header(header: list[str]) -> tuple[int, int, int, int]:
+    """Resolve the Moodle columns needed to read one CSV export.
+
+    A missing marker usually means the file is not a Moodle grade export or it
+    comes from a Moodle instance in another language. The caller gets one clear
+    user-facing message instead of exposing internal parser details.
+    """
+
+    try:
+        return (
+            _column_index(header, EMAIL_COLUMN_MARKER),
+            _column_index(header, NAME_COLUMN_MARKER),
+            _column_index(header, SURNAME_COLUMN_MARKER),
+            _column_index(header, GRADE_COLUMN_MARKER),
+        )
+    except ValueError as error:
+        raise ValueError(UNRECOGNIZED_CSV_MESSAGE) from error
+
+
 def _valid_grades(grades: list[float]) -> list[float]:
     """Ignore missing submissions and zero grades when aggregating attempts."""
 
@@ -238,10 +262,9 @@ def build_result_matrix(
         except StopIteration as error:
             raise ValueError(f"El fitxer '{input_file.name}' és buit.") from error
 
-        email_column = _column_index(header, EMAIL_COLUMN_MARKER)
-        name_column = _column_index(header, NAME_COLUMN_MARKER)
-        surname_column = _column_index(header, SURNAME_COLUMN_MARKER)
-        grade_column = _column_index(header, GRADE_COLUMN_MARKER)
+        email_column, name_column, surname_column, grade_column = _column_indices_from_header(
+            header
+        )
 
         for row in reader:
             if not row:

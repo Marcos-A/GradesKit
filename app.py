@@ -65,10 +65,13 @@ def render_page(error_message: str = "", form_values: dict[str, str] | None = No
           Puja els fitxers CSV dels resultats exportats des de Moodle i l’aplicació els combina en un sol fitxer.
           Pots descarregar el resultat final en format CSV o XLSX.
         </p>
+        <p class="lead lead-note">
+          Aquesta versió reconeix els fitxers exportats des de la versió en català de Moodle.
+        </p>
       </section>
 
       <section class="panel form-panel">
-        {error_html}
+        <div class="alerts" id="form-alerts">{error_html}</div>
         <form action="/merge" method="post" enctype="multipart/form-data" class="merge-form" id="merge-form">
           <div class="grid">
             <div class="field field-upload">
@@ -81,7 +84,7 @@ def render_page(error_message: str = "", form_values: dict[str, str] | None = No
               <div class="upload-list" id="upload-list">
                 <span class="upload-placeholder">Encara no s'ha seleccionat cap fitxer.</span>
               </div>
-              <small>Pots pujar un o més fitxers CSV directament, o un únic fitxer ZIP que els contingui.</small>
+              <small>Pots pujar un o més fitxers CSV directament, o un únic fitxer ZIP que els contingui. Els noms de columna han de correspondre a l'exportació en català de Moodle.</small>
             </div>
 
             <label class="field field-strategy">
@@ -120,10 +123,40 @@ def render_page(error_message: str = "", form_values: dict[str, str] | None = No
       const fileInput = document.getElementById("file-input");
       const uploadZone = document.getElementById("upload-zone");
       const uploadList = document.getElementById("upload-list");
+      const formAlerts = document.getElementById("form-alerts");
       const strategySelect = document.getElementById("strategy");
       const weightedField = document.getElementById("weighted-percent-field");
       const weightedPercentInput = document.getElementById("weighted-percent-input");
       const stagedFiles = [];
+
+      function clearErrorAlert() {{
+        formAlerts.innerHTML = "";
+      }}
+
+      function clearStagedFilesWithTransition() {{
+        const chips = Array.from(uploadList.querySelectorAll(".upload-chip"));
+        if (chips.length === 0) {{
+          stagedFiles.length = 0;
+          renderUploadList();
+          return;
+        }}
+
+        uploadList.classList.add("is-clearing");
+        for (const chip of chips) {{
+          chip.classList.add("is-removing");
+        }}
+
+        window.setTimeout(() => {{
+          stagedFiles.length = 0;
+          uploadList.classList.remove("is-clearing");
+          renderUploadList();
+        }}, 220);
+      }}
+
+      function resetRetryState() {{
+        clearErrorAlert();
+        clearStagedFilesWithTransition();
+      }}
 
       function syncWeightedField() {{
         // Hide the percentage card when it does not apply, but keep its grid
@@ -187,6 +220,7 @@ def render_page(error_message: str = "", form_values: dict[str, str] | None = No
       }}
 
       function addFiles(files) {{
+        clearErrorAlert();
         // Avoid showing the same file twice if the browser fires repeated
         // change events or the user selects the same file again accidentally.
         for (const file of files) {{
@@ -203,31 +237,19 @@ def render_page(error_message: str = "", form_values: dict[str, str] | None = No
       function clearFilesWithTransition() {{
         // Successful downloads clear the staged list, but with a brief fade so
         // the reset feels intentional instead of abrupt.
-        const chips = Array.from(uploadList.querySelectorAll(".upload-chip"));
-        if (chips.length === 0) {{
-          stagedFiles.length = 0;
-          renderUploadList();
-          return;
-        }}
-
-        uploadList.classList.add("is-clearing");
-        for (const chip of chips) {{
-          chip.classList.add("is-removing");
-        }}
-
-        window.setTimeout(() => {{
-          stagedFiles.length = 0;
-          uploadList.classList.remove("is-clearing");
-          renderUploadList();
-        }}, 220);
+        clearStagedFilesWithTransition();
       }}
 
       // The visible upload area is a custom control. It delegates to a hidden
       // native file input so the browser still handles file permissions.
-      uploadZone.addEventListener("click", () => fileInput.click());
+      uploadZone.addEventListener("click", () => {{
+        resetRetryState();
+        fileInput.click();
+      }});
       uploadZone.addEventListener("keydown", (event) => {{
         if (event.key === "Enter" || event.key === " ") {{
           event.preventDefault();
+          resetRetryState();
           fileInput.click();
         }}
       }});
@@ -263,9 +285,10 @@ def render_page(error_message: str = "", form_values: dict[str, str] | None = No
 
         const contentType = response.headers.get("Content-Type") || "";
         if (!response.ok && contentType.includes("text/html")) {{
-          document.open();
-          document.write(await response.text());
-          document.close();
+          const errorPage = await response.text();
+          const parsedDocument = new DOMParser().parseFromString(errorPage, "text/html");
+          const nextError = parsedDocument.querySelector(".alert.error");
+          formAlerts.innerHTML = nextError ? nextError.outerHTML : "";
           return;
         }}
 

@@ -15,6 +15,7 @@ from merger import (
     STRATEGY_AVERAGE,
     STRATEGY_HIGHEST,
     STRATEGY_WEIGHTED,
+    UNRECOGNIZED_CSV_MESSAGE,
     build_result_matrix,
     extract_input_files,
     normalize_percent,
@@ -139,6 +140,22 @@ alice@example.com,Alice,Zephyr,"7,5"
 
         self.assertEqual(len(files), 1)
         self.assertEqual(files[0].name, "exercise-qualificacions.csv")
+
+    def test_unrecognized_columns_raise_friendly_message(self):
+        """Non-Catalan Moodle exports should fail with a user-facing warning."""
+
+        with self.assertRaisesRegex(ValueError, UNRECOGNIZED_CSV_MESSAGE):
+            build_result_matrix(
+                uploaded_files=[
+                    InputFile(
+                        name="exercise-grades.csv",
+                        content="""Email address,First name,Surname,Grade
+alice@example.com,Alice,Zephyr,7.0
+""".encode(),
+                    )
+                ],
+                strategy=STRATEGY_HIGHEST,
+            )
 
     def test_csv_output_is_generated(self):
         """CSV output should keep the expected headers and student rows."""
