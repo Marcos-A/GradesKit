@@ -109,6 +109,7 @@ h1 {
 }
 
 .field.is-hidden {
+  /* Hide the weighted field visually without collapsing its grid position. */
   visibility: hidden;
 }
 
@@ -229,6 +230,7 @@ input[type="file"] {
 }
 
 .upload-chip.is-removing {
+  /* Short exit animation after a successful download clears the staged files. */
   opacity: 0;
   transform: translateY(-4px) scale(0.98);
   filter: blur(1px);

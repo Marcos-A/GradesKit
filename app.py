@@ -39,6 +39,8 @@ def render_page(error_message: str = "", form_values: dict[str, str] | None = No
     if form_values:
         values.update(form_values)
 
+    # The weighted card keeps its place in the desktop grid even when hidden,
+    # so the neighboring cards do not jump around when the strategy changes.
     weighted_hidden_class = "" if values["strategy"] == STRATEGY_WEIGHTED else " is-hidden"
     error_html = (
         f'<div class="alert error">{html_escape(error_message)}</div>'
@@ -124,6 +126,8 @@ def render_page(error_message: str = "", form_values: dict[str, str] | None = No
       const stagedFiles = [];
 
       function syncWeightedField() {{
+        // Hide the percentage card when it does not apply, but keep its grid
+        // slot reserved so the surrounding layout stays stable.
         const isWeighted = strategySelect.value === "{STRATEGY_WEIGHTED}";
         weightedField.classList.toggle("is-hidden", !isWeighted);
         weightedPercentInput.disabled = !isWeighted;
@@ -131,6 +135,8 @@ def render_page(error_message: str = "", form_values: dict[str, str] | None = No
       }}
 
       function normalizeWeightedPercentValue(value, finalize = false) {{
+        // The field is percentage-oriented in the UI. We accept flexible input
+        // while the user types, then normalize it to a clean percentage string.
         let cleaned = value.replace(/\\s+/g, "").replace(/\\./g, ",");
         const hadPercent = cleaned.includes("%");
         cleaned = cleaned.replace(/[^0-9,%]/g, "");
@@ -181,6 +187,8 @@ def render_page(error_message: str = "", form_values: dict[str, str] | None = No
       }}
 
       function addFiles(files) {{
+        // Avoid showing the same file twice if the browser fires repeated
+        // change events or the user selects the same file again accidentally.
         for (const file of files) {{
           const duplicate = stagedFiles.some(
             (item) => item.name === file.name && item.size === file.size && item.relativePath === file.relativePath
@@ -193,6 +201,8 @@ def render_page(error_message: str = "", form_values: dict[str, str] | None = No
       }}
 
       function clearFilesWithTransition() {{
+        // Successful downloads clear the staged list, but with a brief fade so
+        // the reset feels intentional instead of abrupt.
         const chips = Array.from(uploadList.querySelectorAll(".upload-chip"));
         if (chips.length === 0) {{
           stagedFiles.length = 0;
@@ -212,6 +222,8 @@ def render_page(error_message: str = "", form_values: dict[str, str] | None = No
         }}, 220);
       }}
 
+      // The visible upload area is a custom control. It delegates to a hidden
+      // native file input so the browser still handles file permissions.
       uploadZone.addEventListener("click", () => fileInput.click());
       uploadZone.addEventListener("keydown", (event) => {{
         if (event.key === "Enter" || event.key === " ") {{
@@ -242,6 +254,8 @@ def render_page(error_message: str = "", form_values: dict[str, str] | None = No
           formData.append("csv_files", file, file.relativePath || file.name);
         }}
 
+        // Submit through fetch so the page can keep its current state, surface
+        // validation errors inline, and still trigger a direct file download.
         const response = await fetch("/merge", {{
           method: "POST",
           body: formData,
@@ -311,6 +325,8 @@ def parse_uploads(environ):
         if item.filename:
             uploaded_csv_files.append(InputFile(name=item.filename, content=item.file.read()))
 
+    # ZIP files travel through the same field as CSV files; `extract_input_files`
+    # separates them later based on the file extension.
     form_values = {
         "strategy": form.getfirst("strategy", STRATEGY_WEIGHTED),
         "weighted_percent": form.getfirst("weighted_percent", "80%"),
