@@ -1,38 +1,81 @@
 # MoodleGradesMerger
-Returns a CSV file with every student sorted by the name, containing his/her email, name and the highest exercise grade in case of multiple attempts
-from a collection of CSV grade files downloaded from Moodle.
-In case a percent is indicated, for every exercise this percent is assigned to the maximum achieved grade,
-while the rest is distributed between the other grades.
 
-For instance, if there has been 3 attemps for an exercise and 0.7 is set as a percent, 70% of the exercise qualification will be assigned to the highest grade, while 15% will be assigned to the remaining attempts. Attempts not made or with a grade equal to zero are discarded by design; e.g. if there has been 3 attemps and the grade of one of them is equal to zero or it was never submitted, it will be evaluated as if there were only 2 attempts.
+Web app and CLI utility for merging Moodle grade CSV files into a single downloadable result file.
 
-## Requirements
-Column's name indications are set to Catalan:
-- "Adreça electrònica" for Email
-- "Nom" for Name
-- "Cognoms" for Surname
-- "Qualificació" for Grade
+The original project kept the highest grade for each exercise. This version keeps that behavior and adds:
 
-Change them according to your Moodle CSV downloaded grade files language and column names.
+- Upload for one or more CSV files
+- ZIP archive support for CSV bundles
+- CSV or XLSX download for the generated result
+- Three grading strategies:
+  - `highest`: keep only the highest valid grade
+  - `average`: average all valid grades
+  - `weighted`: assign a weight to the highest grade and distribute the remaining percentage equally across the other valid grades
 
-## Running
-If you only want to preserve the highest grade for every exercise:
-- Run from Terminal:
-```
-python path/to/MoodleGradesMerger.py /path/to/CSVFilesFolder
-```
-- In case you have both Python versions, 2 and 3, installed in your computer:
-```
-python3 path/to/MoodleGradesMerger.py /path/to/CSVFilesFolder
+Zero grades and non-submissions are ignored for `average` and `weighted`, following the original README behavior for weighted calculations.
+
+## Moodle CSV expectations
+
+The parser still expects the Moodle export headers to contain these Catalan labels:
+
+- `Adreça electrònica` for email
+- `Nom` for name
+- `Cognoms` for surname
+- `Qualificació` for grade
+
+If your Moodle instance exports different column names, update the markers in [merger.py](/Users/marcosalcocergil/Documents/Dropbox/GitHub/MoodleGradesMerger/merger.py).
+
+## Grading rules
+
+### Highest grade
+
+For each exercise, only the best valid grade is kept.
+
+### Average of all grades
+
+For each exercise, all valid grades above zero are averaged equally.
+
+### Weighted highest grade
+
+The highest valid grade receives a chosen percentage, and the remaining percentage is split equally between the other valid grades.
+
+Examples of accepted percent inputs:
+
+- `80%`
+- `80`
+- `0.8`
+- `0,8`
+
+If there is only one valid grade, that grade is used directly.
+
+## Local run with Docker
+
+Build and run locally:
+
+```bash
+docker build -t moodle-grades-merger .
+docker run --rm -p 8000:8000 moodle-grades-merger
 ```
 
-In case you want to assign a percent to the the highest grade for every exercise, and distribute the remaining one between the other ones:
+The app runs on `http://127.0.0.1:8000`.
+
+## CLI usage
+
+To preserve the original command-line workflow:
+
+```bash
+python3 MoodleGradesMerger.py /path/to/CSVFilesFolder
+python3 MoodleGradesMerger.py /path/to/CSVFilesFolder 0.8
 ```
-python path/to/MoodleGradesMerger.py /path/to/CSVFilesFolder percent
+
+Passing a second argument switches to the weighted mode.
+
+## Tests
+
+```bash
+python -m unittest discover -s tests
 ```
-e.g. python path/to/MoodleGradesMerger.py /path/to/CSVFilesFolder 0.65
-- In case you have both Python versions, 2 and 3, installed in your computer:
-```
-python3 path/to/MoodleGradesMerger.py /path/to/CSVFilesFolder percent
-```
-e.g. python3 path/to/MoodleGradesMerger.py /path/to/CSVFilesFolder 0.65
+
+## Docker deployment
+
+The container starts the built-in Python web server on port `8000`, which is suitable for deployment on the containers server.

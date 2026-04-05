@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Moodle Grades Merger</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <!-- Single-page form: all inputs needed to produce the merged file live here. -->
+    <main class="shell">
+      <section class="panel hero">
+        <p class="eyebrow">Moodle CSV workflow</p>
+        <h1>Merge repeated attempts into one downloadable gradebook.</h1>
+        <p class="lead">
+          Upload separate CSV files, a full folder of CSV files, or a compressed archive containing them.
+          The app combines them by student and returns a CSV or XLSX file.
+        </p>
+      </section>
+
+      <section class="panel form-panel">
+        <!-- Error messages appear here after the server validates an upload. -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="alerts">
+              {% for category, message in messages %}
+                <div class="alert {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('merge') }}" method="post" enctype="multipart/form-data" class="merge-form">
+          <div class="grid">
+            <label class="field">
+              <span>Upload source</span>
+              <input type="file" name="csv_files" accept=".csv,.zip,.tar,.tar.gz,.tgz" multiple>
+              <small>Select one or more CSV files, or a compressed file that contains CSV files.</small>
+            </label>
+
+            <label class="field field-secondary">
+              <span>Folder upload</span>
+              <input type="file" name="csv_files" accept=".csv" multiple webkitdirectory directory>
+              <small>Browsers need a separate folder picker, so folder upload stays here inside the same section.</small>
+            </label>
+
+            <label class="field">
+              <span>Grade strategy</span>
+              <select name="strategy" id="strategy">
+                <option value="{{ strategy_highest }}" {% if selected_strategy == strategy_highest %}selected{% endif %}>Keep only the highest grade</option>
+                <option value="{{ strategy_average }}" {% if selected_strategy == strategy_average %}selected{% endif %}>Average all valid grades</option>
+                <option value="{{ strategy_weighted }}" {% if selected_strategy == strategy_weighted or not selected_strategy %}selected{% endif %}>Weighted highest grade</option>
+              </select>
+              <small>Zero or missing attempts are ignored, following the original script rules.</small>
+            </label>
+
+            <label class="field" id="weighted-percent-field">
+              <span>Weighted highest percent</span>
+              <input type="text" name="weighted_percent" value="{{ default_weighted_percent }}" placeholder="80%">
+              <small>Accepted examples: <code>80%</code>, <code>80</code>, <code>0.8</code> or <code>0,8</code>.</small>
+            </label>
+
+            <label class="field">
+              <span>Download format</span>
+              <select name="output_format">
+                <option value="csv" {% if selected_output_format == 'csv' %}selected{% endif %}>CSV</option>
+                <option value="xlsx" {% if selected_output_format != 'csv' %}selected{% endif %}>XLSX</option>
+              </select>
+              <small>The generated file is returned immediately after processing.</small>
+            </label>
+          </div>
+
+          <button type="submit">Generate merged file</button>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      const strategySelect = document.getElementById("strategy");
+      const weightedField = document.getElementById("weighted-percent-field");
+
+      // Only show the percentage input when the weighted strategy is selected.
+      function syncWeightedField() {
+        weightedField.style.display = strategySelect.value === "weighted" ? "grid" : "none";
+      }
+
+      strategySelect.addEventListener("change", syncWeightedField);
+      syncWeightedField();
+    </script>
+  </body>
+</html>
