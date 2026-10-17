@@ -9,6 +9,7 @@ import json
 import os
 from http import HTTPStatus
 from string import Template
+from urllib.parse import quote
 from wsgiref.simple_server import make_server
 
 from gradeskit.quiz_merge import (
@@ -22,6 +23,9 @@ from gradeskit.quiz_merge import (
     normalize_percent,
     rows_to_csv_bytes,
 )
+from gradeskit.fill import FillOptions, fill, preview
+from gradeskit.moodle_worksheet import read_worksheet
+from gradeskit.tabular import decode_text, parse_table
 from gradeskit.xlsx import rows_to_xlsx_bytes
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -89,11 +93,15 @@ def json_response(start_response, status: HTTPStatus, data: dict):
 
 
 def file_response(start_response, payload: bytes, content_type: str, file_name: str):
+    # Moodle file names can contain accents, so send an ASCII fallback plus
+    # the UTF-8 name (RFC 6266).
+    ascii_name = file_name.encode("ascii", "replace").decode("ascii").replace("?", "_").replace('"', "")
+    disposition = f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(file_name)}"
     start_response(
         "200 OK",
         [
             ("Content-Type", content_type),
-            ("Content-Disposition", f'attachment; filename="{file_name}"'),
+            ("Content-Disposition", disposition),
             ("Content-Length", str(len(payload))),
         ],
     )
@@ -131,6 +139,54 @@ def handle_merge(environ, start_response):
     )
 
 
+def read_fill_inputs(form: cgi.FieldStorage):
+    """Return the worksheet, the grades grid and the options sent by the fill tool.
+
+    Grades come either from an uploaded CSV (`grades_file`) or from text
+    pasted from a spreadsheet (`grades_text`). Missing inputs become None so
+    the preview can describe whatever the user has provided so far.
+    """
+
+    worksheet_files = uploaded_files(form, "worksheet")
+    worksheet = (
+        read_worksheet(worksheet_files[0].content, worksheet_files[0].name) if worksheet_files else None
+    )
+
+    grades_files = uploaded_files(form, "grades_file")
+    if grades_files:
+        grades_text = decode_text(grades_files[0].content)
+    else:
+        grades_text = form.getfirst("grades_text", "")
+    grade_rows = parse_table(grades_text) or None
+
+    try:
+        options = FillOptions.from_json(form.getfirst("options", ""))
+    except (ValueError, TypeError, AttributeError) as error:
+        raise ValueError("Les opcions enviades no són vàlides.") from error
+    return worksheet, grade_rows, options
+
+
+def handle_fill_preview(environ, start_response):
+    try:
+        worksheet, grade_rows, options = read_fill_inputs(parse_form(environ))
+        return json_response(start_response, HTTPStatus.OK, preview(worksheet, grade_rows, options))
+    except ValueError as error:
+        return json_response(start_response, HTTPStatus.BAD_REQUEST, {"error": str(error)})
+
+
+def handle_fill(environ, start_response):
+    try:
+        worksheet, grade_rows, options = read_fill_inputs(parse_form(environ))
+        if worksheet is None or grade_rows is None:
+            raise ValueError("Cal el full de qualificacions de la tasca i les notes finals.")
+        payload = fill(worksheet, grade_rows, options)
+    except ValueError as error:
+        return json_response(start_response, HTTPStatus.BAD_REQUEST, {"error": str(error)})
+
+    stem = os.path.splitext(os.path.basename(worksheet.file_name))[0] or "full"
+    return file_response(start_response, payload, "text/csv; charset=utf-8", f"{stem}-omplert.csv")
+
+
 def application(environ, start_response):
     """WSGI entrypoint used by the local server and the Docker container."""
 
@@ -149,6 +205,12 @@ def application(environ, start_response):
 
     if method == "POST" and path == "/merge":
         return handle_merge(environ, start_response)
+
+    if method == "POST" and path == "/api/fill/preview":
+        return handle_fill_preview(environ, start_response)
+
+    if method == "POST" and path == "/fill":
+        return handle_fill(environ, start_response)
 
     payload = b"Not found"
     start_response("404 Not Found", [("Content-Type", "text/plain; charset=utf-8"), ("Content-Length", str(len(payload)))])

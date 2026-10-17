@@ -9,6 +9,9 @@
   --accent-dark: #2f6140;
   --line: rgba(28, 26, 24, 0.12);
   --shadow: 0 28px 60px rgba(73, 55, 38, 0.14);
+  --warning-bg: rgba(196, 128, 22, 0.1);
+  --warning-text: #7a4a06;
+  --warning-line: rgba(196, 128, 22, 0.25);
 }
 
 * {
@@ -279,6 +282,394 @@ button:hover {
 
 code {
   font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+/* --- Tool tabs ------------------------------------------------------------ */
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.4rem;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.tabs .tab,
+.segmented .segment,
+.link-button {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+.tabs .tab {
+  padding: 0.7rem 1.3rem;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.tabs .tab.is-active {
+  background: var(--accent);
+  color: white;
+}
+
+.tabs .tab:hover,
+.segmented .segment:hover,
+.link-button:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.tool-intro {
+  margin: 0 0 1.25rem;
+  max-width: 70ch;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* --- Fill tool ------------------------------------------------------------ */
+
+.steps {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.step {
+  grid-template-rows: auto;
+}
+
+.segmented {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border-radius: 14px;
+  background: rgba(28, 26, 24, 0.06);
+}
+
+.segmented .segment {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.segmented .segment.is-active {
+  background: #fffdf9;
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(28, 26, 24, 0.12);
+}
+
+textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px dashed rgba(28, 26, 24, 0.2);
+  background: #fffdf9;
+  font: 0.85rem/1.4 "SFMono-Regular", Consolas, monospace;
+  white-space: pre;
+  overflow-x: auto;
+  resize: vertical;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.upload-detail {
+  font-weight: 400;
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.review {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.review h2,
+.review h3 {
+  margin: 0;
+}
+
+.settings {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.setting,
+.setting-group {
+  display: grid;
+  gap: 0.4rem;
+  /* Let wide tables and long select options scroll or truncate instead of
+     stretching the page on phones. */
+  min-width: 0;
+}
+
+.review > *,
+.steps > * {
+  min-width: 0;
+}
+
+.setting > span,
+.setting-group > span {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.setting select {
+  min-width: 0;
+  min-height: 48px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.95rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fffdf9;
+  cursor: pointer;
+}
+
+.chip-toggle input {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.table-scroll {
+  overflow-x: auto;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #fffdf9;
+}
+
+.sheet-preview {
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.sheet-preview table,
+.match-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.sheet-preview th,
+.sheet-preview td,
+.match-table th,
+.match-table td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.sheet-preview thead th {
+  position: sticky;
+  top: 0;
+  background: #f6f1e8;
+}
+
+.role {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(28, 26, 24, 0.08);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.role-name {
+  background: rgba(79, 138, 91, 0.15);
+  color: var(--accent-dark);
+}
+
+.role-grade {
+  background: var(--accent);
+  color: white;
+}
+
+.sheet-preview .row-title td,
+.sheet-preview .row-ignored td {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.sheet-preview .row-header td {
+  font-weight: 700;
+}
+
+.sheet-preview .row-footer td {
+  color: var(--muted);
+  background: rgba(28, 26, 24, 0.03);
+}
+
+.sheet-preview td.col-grade {
+  background: rgba(79, 138, 91, 0.1);
+  font-weight: 700;
+}
+
+.sheet-preview td.col-off {
+  color: rgba(28, 26, 24, 0.35);
+}
+
+/* Approximates how Moodle (Bootstrap) shows the feedback table. */
+.feedback-preview {
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: white;
+  overflow-x: auto;
+}
+
+.feedback-preview table {
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.feedback-preview th,
+.feedback-preview td {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #dee2e6;
+}
+
+.feedback-preview small {
+  color: var(--muted);
+}
+
+.match-summary {
+  margin: 0;
+}
+
+.match-table thead th {
+  background: #f6f1e8;
+}
+
+.match-table td {
+  vertical-align: top;
+  white-space: normal;
+}
+
+.match-table select {
+  min-height: 0;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  border-radius: 10px;
+}
+
+.match-table .grade-cell {
+  font-weight: 700;
+  text-align: center;
+}
+
+.row-warning {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--warning-text);
+}
+
+.status {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: rgba(28, 26, 24, 0.08);
+  color: var(--muted);
+}
+
+.status-badge-exact,
+.status-badge-confirmed,
+.status-badge-manual {
+  background: rgba(79, 138, 91, 0.15);
+  color: var(--accent-dark);
+}
+
+.status-badge-probable {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.status-probable td {
+  background: rgba(196, 128, 22, 0.05);
+}
+
+.link-button {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--accent);
+  font-size: 0.78rem;
+}
+
+.unused-title {
+  margin: 0.75rem 0 0.5rem;
+  color: var(--muted);
+}
+
+.muted-chip {
+  background: rgba(28, 26, 24, 0.06);
+  color: var(--muted);
+}
+
+.alert.warning {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border: 1px solid var(--warning-line);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.howto {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  border-radius: 18px;
+  background: rgba(79, 138, 91, 0.07);
+  border: 1px solid rgba(79, 138, 91, 0.15);
+  line-height: 1.5;
+}
+
+.howto ol {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 @media (min-width: 900px) {

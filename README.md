@@ -89,6 +89,74 @@ The parser expects Moodle export headers to contain these Catalan labels:
 
 If your Moodle instance exports different column names, update the markers in [`gradeskit/quiz_merge.py`](gradeskit/quiz_merge.py).
 
+## Fill an assignment
+
+This tool fills the **grade** and **feedback comments** columns of an
+assignment grading worksheet with the teacher's final grades, ready to upload
+back to Moodle.
+
+### Inputs
+
+1. The grading worksheet CSV, unmodified. In the assignment: *Submissions* →
+   *Download grading worksheet*. The assignment needs the *Offline grading
+   worksheet* and *Feedback comments* feedback types enabled.
+2. The final grades, either pasted from a spreadsheet (copying cells puts the
+   displayed values on the clipboard as tab-separated text, so formulas and
+   formatting are ignored) or uploaded as a CSV (comma or semicolon,
+   UTF-8 or Windows-1252).
+
+### How the grades sheet is read
+
+- The header row is the first row that is (almost) as full as the widest
+  rows, so title rows such as `TOTAL A1 (1a convocatòria)` are skipped and
+  used as the feedback table title.
+- The name column is the one whose values look most like names
+  (`Cognoms, Nom` or `Nom Cognoms`).
+- The **grade is the last column** by default; any other column can be
+  chosen.
+- Rows after the last student without a name (weights such as `50%`, maximum
+  grades) are shown as a footer row in the feedback.
+- A row-counter column (`1, 2, 3…`) is left out of the feedback by default.
+
+Every guess can be changed in the review step.
+
+### Matching students
+
+Names are compared as words without accents or punctuation, and
+`Cognoms, Nom` is reordered to `Nom Cognoms`, which is how Moodle writes the
+full name. If the grades include an email column, emails are compared first.
+
+- Same words → matched.
+- Every word of the shorter name appears in the longer one (a missing second
+  surname), or a very similar spelling → **probable**: the teacher must
+  confirm it before it is used.
+- Two equally good candidates → left unmatched, so the teacher chooses.
+
+Participants without a grade are left exactly as they were.
+
+### What the output keeps
+
+Moodle finds the worksheet columns by their exact header text in the user's
+language, so the header row is never changed. Worksheets in Catalan, Spanish,
+English, Galician, Basque, French, Portuguese, Italian and German are
+recognised (strings taken from the official language packs).
+
+- Grades use the same decimal separator as the worksheet's maximum grade.
+  Moodle reads them with the user's locale, where `.` can be a thousands
+  separator.
+- Grades outside `0`–maximum are not written; Moodle would silently skip them.
+- Feedback is a single-line HTML table with Bootstrap classes
+  (`table table-sm table-bordered`); Moodle stores imported comments as HTML.
+- The file is UTF-8 and comma-separated, the defaults of Moodle's upload form.
+
+### Uploading to Moodle
+
+*Submissions* → *Upload grading worksheet*. If students already had a grade,
+tick *Allow updating records that have been modified more recently in Moodle
+than in the spreadsheet*. Moodle cannot parse localised dates such as
+`dimecres, 7 d’octubre 2026` in the worksheet, so without that option it
+treats every existing grade as newer and skips it.
+
 ## Local run with Docker
 
 Build and run locally:
@@ -117,6 +185,12 @@ Passing a percentage switches to weighted mode. The CLI uses the same logic as t
 - [`templates/index.html`](templates/index.html): page markup, rendered with `string.Template`
 - [`static/`](static/): stylesheet and the browser scripts for each tool
 - [`gradeskit/quiz_merge.py`](gradeskit/quiz_merge.py): quiz parsing, grade calculation, and CSV generation
+- [`gradeskit/fill.py`](gradeskit/fill.py): fill tool flow (preview and filled worksheet)
+- [`gradeskit/moodle_worksheet.py`](gradeskit/moodle_worksheet.py): grading worksheet headers per language, reading and writing
+- [`gradeskit/grades_sheet.py`](gradeskit/grades_sheet.py): detection of header, name, grade and footer rows in the teacher's sheet
+- [`gradeskit/matching.py`](gradeskit/matching.py): student name matching
+- [`gradeskit/feedback_html.py`](gradeskit/feedback_html.py): feedback table HTML
+- [`gradeskit/tabular.py`](gradeskit/tabular.py): CSV and clipboard parsing helpers
 - [`gradeskit/xlsx.py`](gradeskit/xlsx.py): minimal XLSX writer
 - [`gradeskit/__main__.py`](gradeskit/__main__.py): CLI entrypoint
 - [`tests/`](tests/): regression tests

@@ -10,17 +10,27 @@
     <main class="shell">
       <section class="panel hero">
         <p class="eyebrow">GradesKit · Eines de qualificacions per al Moodle</p>
-        <h1>Combina els resultats de diversos qüestionaris en un únic fitxer descarregable.</h1>
+        <h1>Prepara les qualificacions del Moodle sense copiar-les a mà.</h1>
         <p class="lead">
-          Puja els fitxers CSV dels resultats exportats des de Moodle i l’aplicació els combina en un sol fitxer.
-          Pots descarregar el resultat final en format CSV o XLSX.
+          Combina els intents de diversos qüestionaris en un sol fitxer, o omple el full de qualificacions
+          d’una tasca amb les teves notes finals i un comentari amb el detall de cada estudiant.
         </p>
         <p class="lead lead-note">
-          Aquesta versió reconeix els fitxers exportats des de la versió en català de Moodle.
+          Els fitxers es processen al moment i no es desen al servidor.
         </p>
       </section>
 
-      <section class="panel form-panel">
+      <nav class="tabs" role="tablist" aria-label="Eines">
+        <button type="button" class="tab" role="tab" id="tab-merge" data-tab="merge" aria-controls="panel-merge">Combina qüestionaris</button>
+        <button type="button" class="tab" role="tab" id="tab-fill" data-tab="fill" aria-controls="panel-fill">Omple una tasca</button>
+      </nav>
+
+      <section class="panel form-panel tool-panel" id="panel-merge" role="tabpanel" aria-labelledby="tab-merge">
+        <p class="tool-intro">
+          Puja els fitxers CSV dels resultats exportats des de Moodle i l’aplicació els combina en un sol fitxer.
+          Pots descarregar el resultat final en format CSV o XLSX. Aquesta eina reconeix els fitxers exportats des
+          de la versió en català de Moodle.
+        </p>
         <div class="alerts" id="form-alerts"></div>
         <form action="/merge" method="post" enctype="multipart/form-data" class="merge-form" id="merge-form">
           <div class="grid">
@@ -66,10 +76,134 @@
           <button type="submit">Genera el fitxer combinat</button>
         </form>
       </section>
+
+      <section class="panel form-panel tool-panel" id="panel-fill" role="tabpanel" aria-labelledby="tab-fill" hidden>
+        <p class="tool-intro">
+          Omple les columnes «Qualificació» i «Comentaris de retroacció» del full de qualificacions d’una tasca
+          amb les teves notes finals. El comentari de cada estudiant mostra una taula amb el detall de les seves notes.
+          Funciona amb el Moodle en català, castellà, anglès i altres idiomes.
+        </p>
+        <div class="alerts" id="fill-alerts"></div>
+
+        <div class="steps">
+          <div class="field step">
+            <span>1. Full de qualificacions de la tasca</span>
+            <input type="file" id="worksheet-input" accept=".csv" hidden>
+            <div class="upload-zone" id="worksheet-zone" tabindex="0">
+              <strong>Fes clic per seleccionar el fitxer CSV</strong>
+              <span>tal com l’has descarregat del Moodle.</span>
+            </div>
+            <div class="upload-list" id="worksheet-status">
+              <span class="upload-placeholder">Encara no s'ha seleccionat cap fitxer.</span>
+            </div>
+            <small>
+              A la tasca: <em>Trameses</em> → <em>Descarrega el full de càlcul per qualificar</em>. La tasca ha de tenir
+              activats el «Full de qualificació fora de línia» i els «Comentaris de retroacció».
+            </small>
+          </div>
+
+          <div class="field step">
+            <span>2. Notes finals</span>
+            <div class="segmented" role="group" aria-label="Origen de les notes">
+              <button type="button" class="segment is-active" data-source="paste" aria-pressed="true">Enganxa del full de càlcul</button>
+              <button type="button" class="segment" data-source="file" aria-pressed="false">Puja un CSV</button>
+            </div>
+            <div id="grades-paste-block">
+              <textarea id="grades-text" rows="7" wrap="off" spellcheck="false" placeholder="Selecciona les cel·les al full de càlcul, amb la fila de capçalera, i enganxa-les aquí (Ctrl+V / ⌘V)."></textarea>
+            </div>
+            <div id="grades-file-block" hidden>
+              <input type="file" id="grades-file-input" accept=".csv,.tsv,.txt" hidden>
+              <div class="upload-zone" id="grades-zone" tabindex="0">
+                <strong>Fes clic per seleccionar el CSV</strong>
+                <span>amb una fila de capçalera i una fila per estudiant.</span>
+              </div>
+              <div class="upload-list" id="grades-file-status">
+                <span class="upload-placeholder">Encara no s'ha seleccionat cap fitxer.</span>
+              </div>
+            </div>
+            <small>Només es llegeixen els valors. La qualificació és l’última columna; la pots canviar a la revisió.</small>
+          </div>
+        </div>
+
+        <div class="review" id="fill-review" hidden>
+          <h2>3. Revisa</h2>
+
+          <div class="settings">
+            <label class="setting">
+              <span>Fila de capçalera</span>
+              <select id="opt-header-row"></select>
+            </label>
+            <label class="setting">
+              <span>Columna de noms</span>
+              <select id="opt-name-column"></select>
+            </label>
+            <label class="setting">
+              <span>Qualificació</span>
+              <select id="opt-grade-column"></select>
+            </label>
+            <label class="setting">
+              <span>Format del comentari</span>
+              <select id="opt-layout">
+                <option value="horizontal" selected>Taula horitzontal</option>
+                <option value="vertical">Taula vertical</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="setting-group">
+            <span>Columnes del comentari</span>
+            <div class="chips" id="opt-feedback-columns"></div>
+          </div>
+
+          <div class="setting-group">
+            <span>Notes finals llegides</span>
+            <div class="table-scroll sheet-preview" id="sheet-preview"></div>
+          </div>
+
+          <div class="setting-group">
+            <span>Comentari d’exemple</span>
+            <div class="feedback-preview" id="feedback-sample"></div>
+          </div>
+
+          <div id="match-section" hidden>
+            <h3>Correspondència d’estudiants</h3>
+            <p class="match-summary" id="match-summary"></p>
+            <div class="alerts" id="fill-warnings"></div>
+            <div class="table-scroll">
+              <table class="match-table">
+                <thead>
+                  <tr>
+                    <th>Participant del Moodle</th>
+                    <th>Estudiant a les notes finals</th>
+                    <th>Qualificació</th>
+                    <th>Estat</th>
+                  </tr>
+                </thead>
+                <tbody id="match-body"></tbody>
+              </table>
+            </div>
+            <div id="unused-students"></div>
+          </div>
+        </div>
+
+        <button type="button" id="fill-download" disabled>Descarrega el full omplert</button>
+
+        <div class="howto">
+          <strong>Com pujar-lo al Moodle</strong>
+          <ol>
+            <li>A la tasca: <em>Trameses</em> → <em>Puja un full de qualificacions</em>.</li>
+            <li>Tria el fitxer descarregat i deixa la codificació UTF-8 i el separador de comes.</li>
+            <li>Si algun estudiant ja tenia nota, marca «Permet l'actualització de registres que s'hagin modificat més recentment a Moodle que al full de càlcul».</li>
+            <li>Revisa els canvis i confirma amb <em>Importa qualificacions</em>.</li>
+          </ol>
+        </div>
+      </section>
     </main>
 
     <script>window.GRADESKIT = { strategyWeighted: "$strategy_weighted" };</script>
     <script src="/static/common.js"></script>
+    <script src="/static/tabs.js"></script>
     <script src="/static/merge.js"></script>
+    <script src="/static/fill.js"></script>
   </body>
 </html>
