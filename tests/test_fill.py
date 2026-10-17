@@ -182,10 +182,11 @@ class FeedbackTests(unittest.TestCase):
         self.assertIn(f'<th style="{HEADER_STYLE}">Examen</th>', html)
         self.assertIn('<td style="text-align:center;vertical-align:middle">8</td>', html)
 
-    def test_numbers_under_five_are_red(self):
-        html = render_feedback_table(["A", "B", "C", "D"], ["4,99", "5", "NP", "0,00"], [])
+    def test_numbers_under_five_and_np_are_red(self):
+        html = render_feedback_table(["A", "B", "C", "D", "E"], ["4,99", "5", "NP", "0,00", "Apte"], [])
         cells = re.findall(r'<td style="([^"]*)">([^<]*)</td>', html)
-        self.assertEqual([FAIL_STYLE in style for style, _ in cells], [True, False, False, True])
+        self.assertEqual([FAIL_STYLE in style for style, _ in cells], [True, False, True, True, False])
+        self.assertNotIn("bold", "".join(style for style, _ in cells))
 
     def test_vertical_rows_are_striped(self):
         html = render_feedback_table(["A", "B", "C"], ["6", "7", "8"], [], layout=LAYOUT_VERTICAL)

@@ -4,7 +4,8 @@ Moodle saves imported feedback comments as HTML and styles tables with
 Bootstrap, so the built-in table classes give the borders and spacing. Colours
 and alignment are inline styles on each cell: Moodle keeps them, and they do
 not depend on the theme. The look follows the teachers' grades sheets: green
-header cells with white text, light green stripes, and failing grades in red.
+header cells with white text, light green stripes, and failing grades and
+"NP" (no presentat) in red.
 The HTML is kept on a single line so the CSV cell stays simple.
 """
 
@@ -16,22 +17,24 @@ LAYOUT_HORIZONTAL = "horizontal"
 LAYOUT_VERTICAL = "vertical"
 TABLE_OPEN = '<table class="table table-sm table-bordered">'
 PASS_GRADE = 5
+# Marks shown in red like a failing grade, compared without case.
+FAIL_MARKS = {"NP"}
 
 CENTER = "text-align:center;vertical-align:middle"
 TITLE_STYLE = f"{CENTER};background-color:#38761d;color:#ffffff;font-weight:bold"
 HEADER_STYLE = f"{CENTER};background-color:#6aa84f;color:#ffffff;font-weight:bold"
 STRIPE_BACKGROUND = "background-color:#d9ead3"
-FAIL_STYLE = "color:#e00000;font-weight:bold"
+FAIL_STYLE = "color:#e00000"
 
 
 def _value_style(value: str, striped: bool) -> str:
-    """Centre a value, shade striped rows and show numbers under 5 in red."""
+    """Centre a value, shade striped rows and show numbers under 5 and NP in red."""
 
     parts = [CENTER]
     if striped:
         parts.append(STRIPE_BACKGROUND)
     number = parse_number(value)
-    if number is not None and number < PASS_GRADE:
+    if (number is not None and number < PASS_GRADE) or value.strip().upper() in FAIL_MARKS:
         parts.append(FAIL_STYLE)
     return ";".join(parts)
 
