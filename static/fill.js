@@ -32,6 +32,9 @@
   const gradeColumnSelect = document.getElementById("opt-grade-column");
   const layoutSelect = document.getElementById("opt-layout");
   const feedbackColumns = document.getElementById("opt-feedback-columns");
+  const weightsHelp = document.getElementById("weights-help");
+  const includeFooterField = document.getElementById("opt-include-footer-field");
+  const includeFooterInput = document.getElementById("opt-include-footer");
   const sheetPreview = document.getElementById("sheet-preview");
   const feedbackSample = document.getElementById("feedback-sample");
   const matchSection = document.getElementById("match-section");
@@ -52,7 +55,15 @@
   };
 
   function emptyOptions() {
-    return { header_row: null, name_column: null, grade_column: null, feedback_columns: null, layout: layoutSelect.value };
+    return {
+      header_row: null,
+      name_column: null,
+      grade_column: null,
+      feedback_columns: null,
+      layout: layoutSelect.value,
+      weights: null,
+      include_footer: includeFooterInput.checked,
+    };
   }
 
   function hasGrades() {
@@ -161,15 +172,41 @@
     gradeColumnSelect.innerHTML = grades.columns
       .map((label, index) => option(index, label + (index === grades.columns.length - 1 ? " (última columna)" : ""), index === grades.grade_column))
       .join("");
+    // The chips are rebuilt on every preview, so keep the focus on the weight
+    // field the teacher moved to.
+    const focused = document.activeElement && document.activeElement.dataset.weight;
+    const invalid = new Set(grades.invalid_weights);
     feedbackColumns.innerHTML = grades.columns
       .map((label, index) => {
         if (index === grades.name_column) {
           return "";
         }
         const checked = grades.feedback_columns.includes(index) ? " checked" : "";
-        return `<label class="chip-toggle"><input type="checkbox" value="${index}"${checked}><span>${escapeHtml(label)}</span></label>`;
+        // A weight that could not be read keeps the teacher's text so it can be fixed.
+        const typed = state.options.weights ? state.options.weights[index] || "" : "";
+        const weight = invalid.has(index) ? typed : grades.weights[index] || "";
+        return `<span class="chip-toggle">
+          <label><input type="checkbox" value="${index}"${checked}><span>${escapeHtml(label)}</span></label>
+          <input type="text" class="weight-input${invalid.has(index) ? " is-invalid" : ""}" data-weight="${index}" value="${escapeHtml(weight)}" placeholder="pes" inputmode="decimal" autocomplete="off" aria-label="Pes de ${escapeHtml(label)}"${invalid.has(index) ? ' title="No és un percentatge vàlid"' : ""}>
+        </span>`;
       })
       .join("");
+    if (focused !== undefined) {
+      const field = feedbackColumns.querySelector(`[data-weight="${focused}"]`);
+      if (field) field.focus();
+    }
+
+    const found = Object.keys(grades.detected_weights).length > 0;
+    if (grades.invalid_weights.length) {
+      weightsHelp.textContent = "Algun pes no és un percentatge vàlid i no es mostrarà. Exemples acceptats: 50%, 50 o 12,5%.";
+    } else if (state.options.weights === null && !found) {
+      weightsHelp.textContent = "No s'han trobat percentatges a les notes finals. Si vols mostrar el pes de cada apartat, escriu-lo al costat de la columna.";
+    } else {
+      weightsHelp.textContent = "El pes es mostra a la capçalera de cada columna, per exemple «Examen (50%)». Deixa'l buit per no mostrar-lo.";
+    }
+
+    includeFooterField.hidden = grades.footer_rows.length === 0;
+    includeFooterInput.checked = state.options.include_footer;
   }
 
   function renderSheetPreview(grades) {
@@ -180,15 +217,15 @@
       return "";
     });
     const studentRows = new Set(grades.student_rows);
-    const footerRows = new Set(grades.footer_rows);
+    const footerRows = new Set(grades.footer_rows.concat(grades.weight_rows));
 
     const body = grades.rows
       .map((row, rowIndex) => {
         let rowClass = "row-ignored";
-        if (rowIndex < grades.header_row) rowClass = "row-title";
+        if (footerRows.has(rowIndex)) rowClass = "row-footer";
+        else if (rowIndex < grades.header_row) rowClass = "row-title";
         else if (rowIndex === grades.header_row) rowClass = "row-header";
         else if (studentRows.has(rowIndex)) rowClass = "row-student";
-        else if (footerRows.has(rowIndex)) rowClass = "row-footer";
         const cells = row
           .map((cell, columnIndex) => {
             const classes = [];
@@ -271,7 +308,9 @@
     state.matches = {};
   }
 
-  function bindUploadZone(zone, input) {
+  // Each zone opens its file picker on click or Enter/Space and also takes
+  // a dragged file; `onFile` receives the chosen file.
+  function bindUploadZone(zone, input, onFile) {
     zone.addEventListener("click", () => input.click());
     zone.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -279,21 +318,25 @@
         input.click();
       }
     });
+    input.addEventListener("change", () => {
+      const file = input.files[0];
+      input.value = "";
+      if (file) onFile(file);
+    });
+    bindFileDrop(zone, input, alerts, ([file]) => {
+      showError(alerts, "");
+      onFile(file);
+    });
   }
 
-  bindUploadZone(worksheetZone, worksheetInput);
-  bindUploadZone(gradesZone, gradesFileInput);
-
-  worksheetInput.addEventListener("change", () => {
-    state.worksheet = worksheetInput.files[0] || null;
+  bindUploadZone(worksheetZone, worksheetInput, (file) => {
+    state.worksheet = file;
     state.matches = {};
-    worksheetInput.value = "";
     schedulePreview();
   });
 
-  gradesFileInput.addEventListener("change", () => {
-    state.gradesFile = gradesFileInput.files[0] || null;
-    gradesFileInput.value = "";
+  bindUploadZone(gradesZone, gradesFileInput, (file) => {
+    state.gradesFile = file;
     resetGradeChoices();
     schedulePreview();
   });
@@ -343,8 +386,27 @@
     schedulePreview();
   });
 
-  feedbackColumns.addEventListener("change", () => {
-    state.options.feedback_columns = Array.from(feedbackColumns.querySelectorAll("input:checked")).map((input) => Number(input.value));
+  feedbackColumns.addEventListener("change", (event) => {
+    if (event.target.dataset.weight !== undefined) {
+      // Once the teacher edits a weight, every field is sent as it stands.
+      state.options.weights = Object.fromEntries(
+        Array.from(feedbackColumns.querySelectorAll("[data-weight]")).map((input) => [input.dataset.weight, input.value]),
+      );
+    } else {
+      state.options.feedback_columns = Array.from(feedbackColumns.querySelectorAll('input[type="checkbox"]:checked')).map((input) => Number(input.value));
+    }
+    schedulePreview();
+  });
+
+  feedbackColumns.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.target.dataset.weight !== undefined) {
+      event.preventDefault();
+      event.target.blur();
+    }
+  });
+
+  includeFooterInput.addEventListener("change", () => {
+    state.options.include_footer = includeFooterInput.checked;
     schedulePreview();
   });
 

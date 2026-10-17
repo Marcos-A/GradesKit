@@ -4,7 +4,10 @@ GradesKit is a small set of grade tools for the Moodle™ software, available at
 <https://gradeskit.marcos-a.com/>. The interface is in Catalan.
 
 It was previously called MoodleGradesMerger. It was renamed because the Moodle
-trademark policy does not allow "Moodle" in software or domain names.
+trademark policy does not allow "Moodle" in software or domain names. The
+repository moved from `Marcos-A/MoodleGradesMerger` to
+[`Marcos-A/GradesKit`](https://github.com/Marcos-A/GradesKit); GitHub
+redirects the old URL.
 
 ## Merge quizzes
 
@@ -20,6 +23,10 @@ The web app accepts:
 
 - one or more Moodle CSV export files
 - one ZIP file that contains Moodle CSV export files
+
+Files can be dragged onto the upload box or chosen with a click; either way
+they replace the previous selection. Dropped files with another extension are
+rejected.
 
 Folder uploads and TAR/TGZ archives are no longer part of the web workflow. This keeps the interface simpler and avoids browser-specific behavior.
 
@@ -105,6 +112,9 @@ back to Moodle.
    formatting are ignored) or uploaded as a CSV (comma or semicolon,
    UTF-8 or Windows-1252).
 
+Files can be dragged onto either upload box or chosen with a click. A dropped
+file with another extension is rejected before it is sent.
+
 ### How the grades sheet is read
 
 - The header row is the first row that is (almost) as full as the widest
@@ -114,8 +124,16 @@ back to Moodle.
   (`Cognoms, Nom` or `Nom Cognoms`).
 - The **grade is the last column** by default; any other column can be
   chosen.
-- Rows after the last student without a name (weights such as `50%`, maximum
-  grades) are shown as a footer row in the feedback.
+- Percent cells (`50%`) in the rows after the last student, or in a row of
+  percents above the header, are read as the **weight** of each column and
+  shown in its feedback header: `Examen (50%)`. Columns whose header already
+  includes a percent are left as they are.
+- Weights can be typed, changed or cleared next to each feedback column, which
+  helps when the pasted grades have no percents. `50`, `50%`, `12,5%` and
+  `0,5` are accepted.
+- Other values in those rows (maximum grades such as `10,00`) are left out
+  unless *Inclou la fila al peu* is checked; they are then shown as a footer
+  row, without the percents already shown as weights.
 - A row-counter column (`1, 2, 3…`) is left out of the feedback by default.
 
 Every guess can be changed in the review step.
@@ -147,6 +165,8 @@ recognised (strings taken from the official language packs).
 - Grades outside `0`–maximum are not written; Moodle would silently skip them.
 - Feedback is a single-line HTML table with Bootstrap classes
   (`table table-sm table-bordered`); Moodle stores imported comments as HTML.
+  It has the sheet title, the chosen columns with their weights in the
+  headers, and the footer row only when *Inclou la fila al peu* is checked.
 - The file is UTF-8 and comma-separated, the defaults of Moodle's upload form.
 
 ### Uploading to Moodle
@@ -187,7 +207,7 @@ Passing a percentage switches to weighted mode. The CLI uses the same logic as t
 - [`gradeskit/quiz_merge.py`](gradeskit/quiz_merge.py): quiz parsing, grade calculation, and CSV generation
 - [`gradeskit/fill.py`](gradeskit/fill.py): fill tool flow (preview and filled worksheet)
 - [`gradeskit/moodle_worksheet.py`](gradeskit/moodle_worksheet.py): grading worksheet headers per language, reading and writing
-- [`gradeskit/grades_sheet.py`](gradeskit/grades_sheet.py): detection of header, name, grade and footer rows in the teacher's sheet
+- [`gradeskit/grades_sheet.py`](gradeskit/grades_sheet.py): detection of header, name, grade, weights and footer rows in the teacher's sheet
 - [`gradeskit/matching.py`](gradeskit/matching.py): student name matching
 - [`gradeskit/feedback_html.py`](gradeskit/feedback_html.py): feedback table HTML
 - [`gradeskit/tabular.py`](gradeskit/tabular.py): CSV and clipboard parsing helpers

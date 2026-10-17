@@ -38,7 +38,7 @@
               <span>Origen de la pujada</span>
               <input type="file" id="file-input" accept=".csv,.zip" multiple hidden>
               <div class="upload-zone" id="upload-zone" tabindex="0">
-                <strong>Fes clic per seleccionar fitxers</strong>
+                <strong>Arrossega aquí els fitxers o fes clic per seleccionar-los</strong>
                 <span>per pujar un o més fitxers CSV, o bé un fitxer ZIP amb els CSV a dins.</span>
               </div>
               <div class="upload-list" id="upload-list">
@@ -90,7 +90,7 @@
             <span>1. Full de qualificacions de la tasca</span>
             <input type="file" id="worksheet-input" accept=".csv" hidden>
             <div class="upload-zone" id="worksheet-zone" tabindex="0">
-              <strong>Fes clic per seleccionar el fitxer CSV</strong>
+              <strong>Arrossega aquí el fitxer CSV o fes clic per seleccionar-lo</strong>
               <span>tal com l’has descarregat del Moodle.</span>
             </div>
             <div class="upload-list" id="worksheet-status">
@@ -114,7 +114,7 @@
             <div id="grades-file-block" hidden>
               <input type="file" id="grades-file-input" accept=".csv,.tsv,.txt" hidden>
               <div class="upload-zone" id="grades-zone" tabindex="0">
-                <strong>Fes clic per seleccionar el CSV</strong>
+                <strong>Arrossega aquí el CSV o fes clic per seleccionar-lo</strong>
                 <span>amb una fila de capçalera i una fila per estudiant.</span>
               </div>
               <div class="upload-list" id="grades-file-status">
@@ -151,8 +151,13 @@
           </div>
 
           <div class="setting-group">
-            <span>Columnes del comentari</span>
+            <span>Columnes del comentari i pes de cada apartat</span>
             <div class="chips" id="opt-feedback-columns"></div>
+            <small id="weights-help"></small>
+            <label class="inline-check" id="opt-include-footer-field" hidden>
+              <input type="checkbox" id="opt-include-footer">
+              <span>Inclou la fila al peu de les notes finals (per exemple, les notes màximes)</span>
+            </label>
           </div>
 
           <div class="setting-group">

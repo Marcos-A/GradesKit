@@ -4,15 +4,22 @@ A typical sheet has an optional title row ("TOTAL A1 (1a convocatòria)"), a
 header row, one row per student, and optional footer rows with weights such
 as "50%". This module guesses that structure; every guess can be overridden
 from the UI.
+
+Weights are read from percent cells ("50%") only, either in the footer rows
+or in a row of percents above the header, and are shown next to each column
+header in the feedback. Other footer values, such as maximum grades, are kept
+apart so the teacher can choose to show them.
 """
 
 import re
 from dataclasses import dataclass, field
 
+from gradeskit.quiz_merge import normalize_percent
 from gradeskit.tabular import column_letter, parse_number
 
 HEADER_SCAN_ROWS = 15
 LETTER_PATTERN = re.compile(r"[^\W\d_]", re.UNICODE)
+PERCENT_PATTERN = re.compile(r"^\d+(?:[.,]\d+)?\s*%$")
 NO_NAME_COLUMN_MESSAGE = "No s'ha trobat cap columna amb els noms dels estudiants a les notes finals."
 TOO_FEW_ROWS_MESSAGE = (
     "Les notes finals han de tenir com a mínim una fila de capçalera i una fila per estudiant."
@@ -31,9 +38,26 @@ class GradesSheet:
     title: str
     student_rows: list[int] = field(default_factory=list)
     footer_rows: list[int] = field(default_factory=list)
+    # Rows of percents above the header, kept out of the title.
+    weight_rows: list[int] = field(default_factory=list)
+    # Column -> (row, weight) for each percent cell found in the sheet.
+    weight_cells: dict[int, tuple[int, str]] = field(default_factory=dict)
+
+    @property
+    def detected_weights(self) -> dict[int, str]:
+        return {column: weight for column, (_, weight) in self.weight_cells.items()}
 
     def student_name(self, row_index: int) -> str:
         return self.rows[row_index][self.name_column]
+
+    def footer_values(self, columns: list[int]) -> list[list[str]]:
+        """Footer cells for `columns`, without the percents shown as weights."""
+
+        used = {(row, column) for column, (row, _) in self.weight_cells.items()}
+        return [
+            ["" if (row, column) in used else self.rows[row][column] for column in columns]
+            for row in self.footer_rows
+        ]
 
     def to_preview(self) -> dict:
         return {
@@ -47,6 +71,9 @@ class GradesSheet:
             "title": self.title,
             "student_rows": self.student_rows,
             "footer_rows": self.footer_rows,
+            "weight_rows": self.weight_rows,
+            # JSON object keys are strings.
+            "detected_weights": {str(column): weight for column, weight in self.detected_weights.items()},
         }
 
 
@@ -58,17 +85,62 @@ def _looks_like_name(value: str) -> bool:
     return bool(value) and bool(LETTER_PATTERN.search(value)) and parse_number(value) is None
 
 
+def is_percent(value: str) -> bool:
+    return bool(PERCENT_PATTERN.match(value.strip()))
+
+
+def _is_weights_row(row: list[str]) -> bool:
+    return any(row) and all(is_percent(cell) for cell in row if cell)
+
+
+def format_weight(value: str) -> str:
+    """Write a weight typed or read as "50", "50 %", "12,5%" or "0,5" as "50%".
+
+    Raises ValueError when the value is not a percentage.
+    """
+
+    percent = normalize_percent(value) * 100
+    text = f"{percent:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+    return f"{text}%"
+
+
+def detect_weights(
+    rows: list[list[str]], weight_rows: list[int], footer_rows: list[int], columns: list[str]
+) -> dict[int, tuple[int, str]]:
+    """Find the first percent cell of each column in the weights and footer rows.
+
+    Columns whose header already shows a percent ("Examen 50%") are skipped so
+    the weight is not repeated.
+    """
+
+    cells: dict[int, tuple[int, str]] = {}
+    for column, header in enumerate(columns):
+        if "%" in header:
+            continue
+        for row in weight_rows + footer_rows:
+            value = rows[row][column]
+            if not is_percent(value):
+                continue
+            try:
+                cells[column] = (row, format_weight(value))
+            except ValueError:
+                continue
+            break
+    return cells
+
+
 def detect_header_row(rows: list[list[str]]) -> int:
     """The header is the first row that is (almost) as full as the widest rows.
 
-    Title rows above it usually fill one cell, so they are skipped.
+    Title rows above it usually fill one cell, so they are skipped, and so is
+    a row of weights ("40%", "60%").
     """
 
     scanned = rows[:HEADER_SCAN_ROWS]
     widest = max(_filled(row) for row in scanned)
     threshold = max(2, round(widest * 0.8))
     for index, row in enumerate(scanned[:-1]):
-        if _filled(row) >= threshold:
+        if _filled(row) >= threshold and not _is_weights_row(row):
             return index
     return 0
 
@@ -132,7 +204,8 @@ def analyse_grades_sheet(
     ]
     last_student = student_rows[-1] if student_rows else header_row
     # Rows after the last student without a name hold weights or maximums
-    # ("50%", "10,00"); they are shown in the feedback as a footer.
+    # ("50%", "10,00"). Percents become weights; the rest can be shown as a
+    # footer.
     footer_rows = [
         index
         for index in range(last_student + 1, len(rows))
@@ -151,7 +224,10 @@ def analyse_grades_sheet(
         rows[header_row][column] or f"Columna {column_letter(column)}"
         for column in range(width)
     ]
-    title = " · ".join(cell for row in rows[:header_row] for cell in row if cell)
+    weight_rows = [index for index in range(header_row) if _is_weights_row(rows[index])]
+    title = " · ".join(
+        cell for index, row in enumerate(rows[:header_row]) if index not in weight_rows for cell in row if cell
+    )
 
     return GradesSheet(
         rows=rows,
@@ -164,4 +240,6 @@ def analyse_grades_sheet(
         title=title,
         student_rows=student_rows,
         footer_rows=footer_rows,
+        weight_rows=weight_rows,
+        weight_cells=detect_weights(rows, weight_rows, footer_rows, columns),
     )

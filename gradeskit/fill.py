@@ -9,7 +9,7 @@ import json
 from dataclasses import dataclass, field
 
 from gradeskit.feedback_html import LAYOUT_HORIZONTAL, LAYOUT_VERTICAL, render_feedback_table
-from gradeskit.grades_sheet import GradesSheet, analyse_grades_sheet
+from gradeskit.grades_sheet import GradesSheet, analyse_grades_sheet, format_weight
 from gradeskit.matching import STATUS_EXACT, STATUS_NONE, STATUS_PROBABLE, Person, match_people
 from gradeskit.moodle_worksheet import (
     ROLE_EMAIL,
@@ -48,6 +48,11 @@ class FillOptions:
     grade_column: int | None = None
     feedback_columns: list[int] | None = None
     layout: str = LAYOUT_HORIZONTAL
+    # Column -> weight typed by the teacher; an empty value means no weight.
+    # None uses the percents found in the sheet.
+    weights: dict[int, str] | None = None
+    # Show the footer rows (maximum grades...) under the feedback table.
+    include_footer: bool = False
     # Participant identifier -> grades sheet row chosen or confirmed by the
     # teacher, or NO_STUDENT to leave that participant untouched.
     matches: dict[str, int] = field(default_factory=dict)
@@ -61,12 +66,15 @@ class FillOptions:
             return int(value) if isinstance(value, (int, str)) and str(value).lstrip("-").isdigit() else None
 
         feedback_columns = data.get("feedback_columns")
+        weights = data.get("weights")
         return cls(
             header_row=optional_int("header_row"),
             name_column=optional_int("name_column"),
             grade_column=optional_int("grade_column"),
             feedback_columns=[int(value) for value in feedback_columns] if isinstance(feedback_columns, list) else None,
             layout=LAYOUT_VERTICAL if data.get("layout") == LAYOUT_VERTICAL else LAYOUT_HORIZONTAL,
+            weights={int(key): str(value) for key, value in weights.items()} if isinstance(weights, dict) else None,
+            include_footer=data.get("include_footer") is True,
             matches={str(key): int(value) for key, value in (data.get("matches") or {}).items()},
         )
 
@@ -113,14 +121,38 @@ def load_grades_sheet(rows: list[list[str]], options: FillOptions) -> GradesShee
     )
 
 
-def student_feedback(sheet: GradesSheet, student_row: int, layout: str) -> str:
+def resolve_weights(sheet: GradesSheet, options: FillOptions) -> tuple[dict[int, str], list[int]]:
+    """Return the weight shown for each column and the columns with an invalid weight.
+
+    Without choices from the teacher, the percents found in the sheet are used.
+    """
+
+    if options.weights is None:
+        return sheet.detected_weights, []
+    weights: dict[int, str] = {}
+    invalid: list[int] = []
+    for column, value in options.weights.items():
+        if not value.strip() or not 0 <= column < len(sheet.columns):
+            continue
+        try:
+            weights[column] = format_weight(value)
+        except ValueError:
+            invalid.append(column)
+    return weights, invalid
+
+
+def student_feedback(sheet: GradesSheet, student_row: int, options: FillOptions) -> str:
     columns = sheet.feedback_columns
+    weights, _ = resolve_weights(sheet, options)
     return render_feedback_table(
-        headers=[sheet.columns[column] for column in columns],
+        headers=[
+            f"{sheet.columns[column]} ({weights[column]})" if column in weights else sheet.columns[column]
+            for column in columns
+        ],
         values=[sheet.rows[student_row][column] for column in columns],
-        footer_rows=[[sheet.rows[row][column] for column in columns] for row in sheet.footer_rows],
+        footer_rows=sheet.footer_values(columns) if options.include_footer else [],
         title=sheet.title,
-        layout=layout,
+        layout=options.layout,
     )
 
 
@@ -193,7 +225,7 @@ def plan_participants(
         existing = worksheet.cell(plan.row, ROLE_GRADE)
         plan.replaces_grade = existing not in ("", "-")
         if has_feedback:
-            plan.feedback = student_feedback(sheet, plan.student_row, options.layout)
+            plan.feedback = student_feedback(sheet, plan.student_row, options)
 
     used = {plan.student_row for plan in plans if plan.student_row is not None}
     unused = [row for row in sheet.student_rows if row not in used]
@@ -221,8 +253,11 @@ def preview(worksheet: Worksheet | None, grade_rows: list[list[str]] | None, opt
 
     sheet = load_grades_sheet(grade_rows, options)
     result["grades"] = sheet.to_preview()
+    weights, invalid_weights = resolve_weights(sheet, options)
+    result["grades"]["weights"] = {str(column): weight for column, weight in weights.items()}
+    result["grades"]["invalid_weights"] = invalid_weights
     if sheet.student_rows:
-        result["feedback_sample"] = student_feedback(sheet, sheet.student_rows[0], options.layout)
+        result["feedback_sample"] = student_feedback(sheet, sheet.student_rows[0], options)
     if worksheet is None:
         return result
 

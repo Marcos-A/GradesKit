@@ -130,6 +130,14 @@
     }
   });
 
+  // A drop replaces the staged files, like choosing them with a click. The
+  // list is cleared at once: the click's fade would run after the new files
+  // are added and remove them.
+  bindFileDrop(uploadZone, fileInput, formAlerts, (files) => {
+    stagedFiles.length = 0;
+    addFiles(files);
+  });
+
   fileInput.addEventListener("change", () => {
     addFiles(Array.from(fileInput.files || []));
     fileInput.value = "";
