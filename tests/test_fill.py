@@ -7,10 +7,18 @@ teacher's grades sheet (title row, weights footer row) with fictional students.
 import csv
 import io
 import json
+import re
 import unittest
 from pathlib import Path
 
-from gradeskit.feedback_html import LAYOUT_VERTICAL, render_feedback_table
+from gradeskit.feedback_html import (
+    FAIL_STYLE,
+    HEADER_STYLE,
+    LAYOUT_VERTICAL,
+    STRIPE_BACKGROUND,
+    TITLE_STYLE,
+    render_feedback_table,
+)
 from gradeskit.fill import NO_STUDENT, FillOptions, fill, preview
 from gradeskit.grades_sheet import analyse_grades_sheet, format_weight
 from gradeskit.matching import STATUS_EXACT, STATUS_NONE, STATUS_PROBABLE, Person, match_people
@@ -20,6 +28,12 @@ from gradeskit.tabular import decode_text, parse_number, parse_table
 FIXTURES = Path(__file__).parent / "fixtures"
 WORKSHEET_BYTES = (FIXTURES / "worksheet_ca.csv").read_bytes()
 GRADES_TEXT = (FIXTURES / "grades_paste.tsv").read_text(encoding="utf-8")
+
+
+def unstyled(html: str) -> str:
+    """Feedback HTML without the inline styles, to check its structure."""
+
+    return re.sub(r' style="[^"]*"', "", html)
 
 
 def filled_rows(options: FillOptions | None = None) -> list[list[str]]:
@@ -152,7 +166,7 @@ class WorksheetTests(unittest.TestCase):
 
 class FeedbackTests(unittest.TestCase):
     def test_horizontal_table_escapes_values(self):
-        html = render_feedback_table(["<b>"], ["8"], [["50%"]], title="T & T")
+        html = unstyled(render_feedback_table(["<b>"], ["8"], [["50%"]], title="T & T"))
         self.assertIn("<th>&lt;b&gt;</th>", html)
         self.assertIn('<th colspan="1">T &amp; T</th>', html)
         self.assertIn("<tfoot><tr><td><small>50%</small></td></tr></tfoot>", html)
@@ -160,7 +174,23 @@ class FeedbackTests(unittest.TestCase):
 
     def test_vertical_table_puts_weights_beside_values(self):
         html = render_feedback_table(["Examen"], ["8"], [["50%"]], layout=LAYOUT_VERTICAL)
-        self.assertIn("<tr><th>Examen</th><td>8</td><td><small>50%</small></td></tr>", html)
+        self.assertIn("<tr><th>Examen</th><td>8</td><td><small>50%</small></td></tr>", unstyled(html))
+
+    def test_cells_are_centred_and_coloured(self):
+        html = render_feedback_table(["Examen"], ["8"], [], title="A1")
+        self.assertIn(f'<th colspan="1" style="{TITLE_STYLE}">A1</th>', html)
+        self.assertIn(f'<th style="{HEADER_STYLE}">Examen</th>', html)
+        self.assertIn('<td style="text-align:center;vertical-align:middle">8</td>', html)
+
+    def test_numbers_under_five_are_red(self):
+        html = render_feedback_table(["A", "B", "C", "D"], ["4,99", "5", "NP", "0,00"], [])
+        cells = re.findall(r'<td style="([^"]*)">([^<]*)</td>', html)
+        self.assertEqual([FAIL_STYLE in style for style, _ in cells], [True, False, False, True])
+
+    def test_vertical_rows_are_striped(self):
+        html = render_feedback_table(["A", "B", "C"], ["6", "7", "8"], [], layout=LAYOUT_VERTICAL)
+        rows = re.findall(r"<tr>.*?</tr>", html)
+        self.assertEqual([STRIPE_BACKGROUND in row for row in rows], [False, True, False])
 
 
 class FillTests(unittest.TestCase):
@@ -168,28 +198,28 @@ class FillTests(unittest.TestCase):
         rows = filled_rows()
         sara = row_for(rows, "Participant1172192")
         self.assertEqual(sara[4], "9")
-        self.assertIn("<td>8,69</td><td>10,00</td><td>9,34</td><td>9</td>", sara[9])
-        self.assertIn("TOTAL A1 (1a convocatòria)", sara[9])
-        self.assertIn("<th>Activitats (50%)</th><th>Examen (50%)</th><th>A1-TOTAL</th><th>A1</th>", sara[9])
-        self.assertNotIn("<tfoot>", sara[9])
-        self.assertNotIn("10,00</small>", sara[9])
+        self.assertIn("<td>8,69</td><td>10,00</td><td>9,34</td><td>9</td>", unstyled(sara[9]))
+        self.assertIn("TOTAL A1 (1a convocatòria)", unstyled(sara[9]))
+        self.assertIn("<th>Activitats (50%)</th><th>Examen (50%)</th><th>A1-TOTAL</th><th>A1</th>", unstyled(sara[9]))
+        self.assertNotIn("<tfoot>", unstyled(sara[9]))
+        self.assertNotIn("10,00</small>", unstyled(sara[9]))
 
     def test_footer_can_be_included_without_repeating_weights(self):
         sara = row_for(filled_rows(FillOptions(include_footer=True)), "Participant1172192")
-        self.assertIn("<tfoot><tr><td><small></small></td><td><small></small></td><td><small>10,00</small></td>", sara[9])
-        self.assertIn("<th>Examen (50%)</th>", sara[9])
+        self.assertIn("<tfoot><tr><td><small></small></td><td><small></small></td><td><small>10,00</small></td>", unstyled(sara[9]))
+        self.assertIn("<th>Examen (50%)</th>", unstyled(sara[9]))
 
     def test_teacher_weights_replace_detected_ones(self):
         rows = filled_rows(FillOptions(weights={2: "30", 3: "70 %", 4: "", 5: ""}))
         sara = row_for(rows, "Participant1172192")
-        self.assertIn("<th>Activitats (30%)</th><th>Examen (70%)</th><th>A1-TOTAL</th>", sara[9])
+        self.assertIn("<th>Activitats (30%)</th><th>Examen (70%)</th><th>A1-TOTAL</th>", unstyled(sara[9]))
 
     def test_invalid_weight_is_reported_and_left_out(self):
         worksheet = read_worksheet(WORKSHEET_BYTES, "worksheet.csv")
         result = preview(worksheet, parse_table(GRADES_TEXT), FillOptions(weights={2: "molt", 3: "50"}))
         self.assertEqual(result["grades"]["invalid_weights"], [2])
         self.assertEqual(result["grades"]["weights"], {"3": "50%"})
-        self.assertIn("<th>Activitats</th><th>Examen (50%)</th>", result["feedback_sample"])
+        self.assertIn("<th>Activitats</th><th>Examen (50%)</th>", unstyled(result["feedback_sample"]))
 
     def test_header_and_unmatched_rows_are_untouched(self):
         original = list(csv.reader(io.StringIO(WORKSHEET_BYTES.decode("utf-8"))))
