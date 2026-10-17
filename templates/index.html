@@ -1,101 +1,75 @@
 <!doctype html>
-<!--
-  Legacy Flask/Jinja template kept only as historical reference.
-
-  The current application renders its HTML directly from app.py so it can stay
-  dependency-free. Changes to the live web UI should therefore be made in
-  app.py and static/style.css, not here.
--->
-<html lang="en">
+<html lang="ca">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Moodle Grades Merger</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>GradesKit · Eines de qualificacions per al Moodle</title>
+    <link rel="stylesheet" href="/static/style.css">
   </head>
   <body>
-    <!-- Single-page form: all inputs needed to produce the merged file live here. -->
     <main class="shell">
       <section class="panel hero">
-        <p class="eyebrow">Moodle CSV workflow</p>
-        <h1>Merge repeated attempts into one downloadable gradebook.</h1>
+        <p class="eyebrow">GradesKit · Eines de qualificacions per al Moodle</p>
+        <h1>Combina els resultats de diversos qüestionaris en un únic fitxer descarregable.</h1>
         <p class="lead">
-          Upload separate CSV files, a full folder of CSV files, or a compressed archive containing them.
-          The app combines them by student and returns a CSV or XLSX file.
+          Puja els fitxers CSV dels resultats exportats des de Moodle i l’aplicació els combina en un sol fitxer.
+          Pots descarregar el resultat final en format CSV o XLSX.
+        </p>
+        <p class="lead lead-note">
+          Aquesta versió reconeix els fitxers exportats des de la versió en català de Moodle.
         </p>
       </section>
 
       <section class="panel form-panel">
-        <!-- Error messages appear here after the server validates an upload. -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            <div class="alerts">
-              {% for category, message in messages %}
-                <div class="alert {{ category }}">{{ message }}</div>
-              {% endfor %}
-            </div>
-          {% endif %}
-        {% endwith %}
-
-        <form action="{{ url_for('merge') }}" method="post" enctype="multipart/form-data" class="merge-form">
+        <div class="alerts" id="form-alerts"></div>
+        <form action="/merge" method="post" enctype="multipart/form-data" class="merge-form" id="merge-form">
           <div class="grid">
-            <label class="field">
-              <span>Upload source</span>
-              <input type="file" name="csv_files" accept=".csv,.zip,.tar,.tar.gz,.tgz" multiple>
-              <small>Select one or more CSV files, or a compressed file that contains CSV files.</small>
-            </label>
+            <div class="field field-upload">
+              <span>Origen de la pujada</span>
+              <input type="file" id="file-input" accept=".csv,.zip" multiple hidden>
+              <div class="upload-zone" id="upload-zone" tabindex="0">
+                <strong>Fes clic per seleccionar fitxers</strong>
+                <span>per pujar un o més fitxers CSV, o bé un fitxer ZIP amb els CSV a dins.</span>
+              </div>
+              <div class="upload-list" id="upload-list">
+                <span class="upload-placeholder">Encara no s'ha seleccionat cap fitxer.</span>
+              </div>
+              <small>Pots pujar un o més fitxers CSV directament, o un únic fitxer ZIP que els contingui. Els noms de columna han de correspondre a l'exportació en català de Moodle.</small>
+            </div>
 
-            <label class="field field-secondary">
-              <span>Folder upload</span>
-              <input type="file" name="csv_files" accept=".csv" multiple webkitdirectory directory>
-              <small>Browsers need a separate folder picker, so folder upload stays here inside the same section.</small>
-            </label>
-
-            <label class="field">
-              <span>Grade strategy</span>
-              <select name="strategy" id="strategy">
-                <option value="{{ strategy_highest }}" {% if selected_strategy == strategy_highest %}selected{% endif %}>Keep only the highest grade</option>
-                <option value="{{ strategy_average }}" {% if selected_strategy == strategy_average %}selected{% endif %}>Average all valid grades</option>
-                <option value="{{ strategy_weighted }}" {% if selected_strategy == strategy_weighted or not selected_strategy %}selected{% endif %}>Weighted highest grade</option>
+            <label class="field field-strategy">
+              <span>Estratègia de qualificació</span>
+              <select name="strategy" id="strategy" class="strategy-select">
+                <option value="$strategy_highest">Només la nota més alta</option>
+                <option value="$strategy_average">Mitjana de les notes vàlides</option>
+                <option value="$strategy_weighted" selected>Ponderar la nota més alta</option>
               </select>
-              <small>Zero or missing attempts are ignored, following the original script rules.</small>
+              <small>Els intents amb una nota de zero o sense lliurament s'ignoren.</small>
             </label>
 
-            <label class="field" id="weighted-percent-field">
-              <span>Weighted highest percent</span>
-              <input type="text" name="weighted_percent" value="{{ default_weighted_percent }}" placeholder="80%">
-              <small>Accepted examples: <code>80%</code>, <code>80</code>, <code>0.8</code> or <code>0,8</code>.</small>
+            <label class="field field-weighted" id="weighted-percent-field">
+              <span>Percentatge de la nota més alta</span>
+              <input type="text" name="weighted_percent" id="weighted-percent-input" value="80%" placeholder="80%" inputmode="decimal" autocomplete="off">
+              <small id="weighted-percent-help">Exemples acceptats: <code>80%</code>, <code>80</code> o <code>0,8%</code>.</small>
             </label>
 
-            <label class="field">
-              <span>Download format</span>
+            <label class="field field-download">
+              <span>Format de descàrrega</span>
               <select name="output_format">
-                <option value="csv" {% if selected_output_format == 'csv' %}selected{% endif %}>CSV</option>
-                <option value="xlsx" {% if selected_output_format != 'csv' %}selected{% endif %}>XLSX</option>
+                <option value="csv">CSV</option>
+                <option value="xlsx" selected>XLSX</option>
               </select>
-              <small>The generated file is returned immediately after processing.</small>
+              <small>El fitxer generat es descarrega immediatament després del processament.</small>
             </label>
           </div>
 
-          <button type="submit">Generate merged file</button>
+          <button type="submit">Genera el fitxer combinat</button>
         </form>
       </section>
     </main>
 
-    <script>
-      const strategySelect = document.getElementById("strategy");
-      const weightedField = document.getElementById("weighted-percent-field");
-
-      // Only show the percentage input when the weighted strategy is selected.
-      function syncWeightedField() {
-        weightedField.style.display = strategySelect.value === "weighted" ? "grid" : "none";
-      }
-
-      strategySelect.addEventListener("change", syncWeightedField);
-      syncWeightedField();
-    </script>
+    <script>window.GRADESKIT = { strategyWeighted: "$strategy_weighted" };</script>
+    <script src="/static/common.js"></script>
+    <script src="/static/merge.js"></script>
   </body>
 </html>

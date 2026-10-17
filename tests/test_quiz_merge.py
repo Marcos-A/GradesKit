@@ -10,7 +10,7 @@ import unittest
 import xml.etree.ElementTree as ET
 import zipfile
 
-from merger import (
+from gradeskit.quiz_merge import (
     InputFile,
     STRATEGY_AVERAGE,
     STRATEGY_HIGHEST,
@@ -20,8 +20,8 @@ from merger import (
     extract_input_files,
     normalize_percent,
     rows_to_csv_bytes,
-    rows_to_xlsx_bytes,
 )
+from gradeskit.xlsx import rows_to_xlsx_bytes
 
 
 FILE_ONE = """Adreça electrònica,Nom,Cognoms,Qualificació
