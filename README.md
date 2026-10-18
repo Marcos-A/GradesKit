@@ -212,7 +212,9 @@ Passing a percentage switches to weighted mode. The CLI uses the same logic as t
 - [`gradeskit/feedback_html.py`](gradeskit/feedback_html.py): feedback table HTML
 - [`gradeskit/tabular.py`](gradeskit/tabular.py): CSV and clipboard parsing helpers
 - [`gradeskit/xlsx.py`](gradeskit/xlsx.py): minimal XLSX writer
+- [`gradeskit/build_info.py`](gradeskit/build_info.py): build and release identification
 - [`gradeskit/__main__.py`](gradeskit/__main__.py): CLI entrypoint
+- [`scripts/`](scripts/): deployment and build-identification scripts
 - [`tests/`](tests/): regression tests
 - [`Dockerfile`](Dockerfile): container image used for local runs and deployment
 
@@ -225,3 +227,38 @@ python -m unittest discover -s tests
 ## Docker deployment
 
 The container starts the built-in Python web server on port `8000`. The application is intentionally standard-library-only so the image can be built and deployed without installing third-party Python packages.
+
+The production container is defined in `/srv/compose/gradeskit/compose.yml`.
+Deploy from a clean checkout with:
+
+```bash
+scripts/deploy.sh
+```
+
+### Build identification
+
+Every deployment shows which commit it runs, without needing a release:
+
+- [`scripts/build-env.sh`](scripts/build-env.sh) bakes the commit SHA and
+  build time into the image (also its `org.opencontainers.image.revision`
+  label). It refuses an invalid SHA or uncommitted changes (`ALLOW_DIRTY=1`
+  overrides).
+- [`scripts/update-release-info.sh`](scripts/update-release-info.sh) writes the
+  latest published GitHub release (via `gh` on the host) to
+  `build-meta/release-info.json`, mounted read-only into the container.
+  Deploying never creates or bumps a release. After publishing one
+  (`gh release create v2.1.0 --generate-notes`), run
+  `scripts/update-release-info.sh build-meta/release-info.json "$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' gradeskit-web:local)"`;
+  the app picks it up without a rebuild. If no release can be verified, none
+  is shown.
+- `APP_ENV` (`production` or `preview`), `REPO_URL` and `REPO_VISIBILITY` are
+  runtime settings in the compose file.
+- Both scripts are unchanged copies of the canonical `app-build-info` v1
+  scripts (see their header); update them by re-copying, not by editing here.
+
+`GET /build-info.json` returns the environment, `build.sha`/`shortSha`/`builtAt`
+and the `release` (or `null`). The page footer shows `v2.0.0 · 3507843`, or
+`Build 3507843` with no release, `Preview · 3507843` outside production, and
+`Build unknown` when the image was built without `scripts/deploy.sh` (for
+example a plain `docker build`). With `REPO_VISIBILITY=private` it shows only
+the release.

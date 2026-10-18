@@ -12,6 +12,7 @@ from string import Template
 from urllib.parse import quote
 from wsgiref.simple_server import make_server
 
+from gradeskit.build_info import footer_html, get_build_info
 from gradeskit.quiz_merge import (
     InputFile,
     RESULT_FILE_NAME,
@@ -48,6 +49,7 @@ def render_page() -> bytes:
         strategy_highest=STRATEGY_HIGHEST,
         strategy_average=STRATEGY_AVERAGE,
         strategy_weighted=STRATEGY_WEIGHTED,
+        build_footer=footer_html(),
     )
     return html.encode("utf-8")
 
@@ -83,11 +85,12 @@ def uploaded_files(form: cgi.FieldStorage, field_name: str) -> list[InputFile]:
     return [InputFile(name=item.filename, content=item.file.read()) for item in items if item.filename]
 
 
-def json_response(start_response, status: HTTPStatus, data: dict):
+def json_response(start_response, status: HTTPStatus, data: dict, extra_headers: list | None = None):
     payload = json.dumps(data, ensure_ascii=False).encode("utf-8")
     start_response(
         f"{status.value} {status.phrase}",
-        [("Content-Type", "application/json; charset=utf-8"), ("Content-Length", str(len(payload)))],
+        [("Content-Type", "application/json; charset=utf-8"), ("Content-Length", str(len(payload)))]
+        + (extra_headers or []),
     )
     return [payload]
 
@@ -197,6 +200,10 @@ def application(environ, start_response):
         payload = render_page()
         start_response("200 OK", [("Content-Type", "text/html; charset=utf-8"), ("Content-Length", str(len(payload)))])
         return [payload]
+
+    if method == "GET" and path == "/build-info.json":
+        # Never cached, so it always describes the running build.
+        return json_response(start_response, HTTPStatus.OK, get_build_info(), [("Cache-Control", "no-store")])
 
     if method == "GET" and path.startswith("/static/"):
         status, headers, payload = serve_static(path)

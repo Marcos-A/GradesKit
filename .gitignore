@@ -41,3 +41,6 @@ __pycache__/
 
 # VS Code editor data
 .vscode/*
+
+# Release metadata written at deploy time
+build-meta/

@@ -725,6 +725,18 @@ button:disabled {
   }
 }
 
+/* Build identification stays secondary: small, muted, under the tools. */
+.build-info {
+  margin: -2.5rem auto 2rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.build-info a {
+  color: inherit;
+}
+
 @media (max-width: 640px) {
   /* Tighten spacing on small screens instead of shrinking text aggressively. */
   .shell {
