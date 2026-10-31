@@ -215,8 +215,9 @@ def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | N
     if master is None or grades is None:
         return result
 
+    # A student listed without a grade gets a 0, like one not listed at all.
     def grade_of(row: int) -> str:
-        return grades.rows[row][grade_column]
+        return grades.rows[row][grade_column] or MISSING_GRADE
 
     plans = plan_students(master, grades, options)
     by_row = {plan.row: plan for plan in plans}

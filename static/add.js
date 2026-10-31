@@ -203,7 +203,7 @@
       ? `<div class="alert warning">
            ${result.unused.length === 1 ? "Aquest estudiant de les notes no és" : `Aquests ${result.unused.length} estudiants de les notes no són`}
            a la llista principal i la seva nota no s’afegirà:
-           ${result.unused.map((student) => `<strong>${escapeHtml(student.name)}</strong> (${escapeHtml(student.grade || "sense nota")})`).join(", ")}.
+           ${result.unused.map((student) => `<strong>${escapeHtml(student.name)}</strong> (${escapeHtml(student.grade)})`).join(", ")}.
          </div>`
       : "";
 

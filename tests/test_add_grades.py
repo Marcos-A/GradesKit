@@ -70,6 +70,12 @@ class MatchingTests(unittest.TestCase):
         self.assertIsNone(student["grades_row"])
         self.assertEqual(student["grade"], "0")
 
+    def test_empty_grade_gets_zero(self):
+        grades = "Nom\tQualificacions\nOriol Costa Pons\t\nHugo Romero\t9\n"
+        result = run(grades=grades)
+        self.assertEqual(by_name(result)["Costa Pons, Oriol"]["grade"], "0")
+        self.assertIn("101\tCosta Pons, Oriol\t\t8\t0", result["text"].splitlines())
+
     def test_students_only_in_grades_are_reported(self):
         result = run()
         self.assertEqual([student["name"] for student in result["unused"]], ["Laia Ferrer Soler"])

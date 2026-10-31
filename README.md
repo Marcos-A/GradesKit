@@ -218,7 +218,8 @@ Unlike the fill tool, close matches (*Semblant*) are used straight away;
 they are listed first, with ambiguous students (*Dubtós*), so they can be
 checked and changed.
 
-- Students of the main list without a grade get a `0`.
+- Students of the main list without a grade get a `0`, whether they are
+  missing from the grades list or listed with an empty grade.
 - Students of the grades list missing from the main list are shown in a
   warning, with their grade, and are left out.
 
