@@ -194,19 +194,35 @@ Both lists are pasted from a spreadsheet or uploaded as a CSV, like the final
 grades of the fill tool. Each list remembers the last choice in the browser
 (`localStorage`); if storage is blocked, it starts on pasting.
 
-1. **Main list**: one row per student, with the names in any column (usually
-   the first or second) and any other columns (IDs, exercise grades…). Title
-   rows above the header are allowed.
-2. **Grades to add**: the student's name and the grade. Only the column
-   headed `Qualificacions` (or `Qualificació`, ignoring accents and case) is
-   used; without one, the last column with values is used.
+Each step says in one line what it expects, with the details below the box.
+
+1. **Main list**: the teacher's students, one per row, with the names
+   (`Nom Cognoms` or `Cognoms, Nom`) in any column, usually the first or
+   second, and any other columns (IDs, exercise grades…). Title rows above
+   the header are allowed.
+2. **Grades to add**: usually the assignment grading worksheet downloaded
+   from Moodle (*Full de qualificacions*), or any list with at least a column
+   of names and a column of grades. The grade comes from the column headed
+   `Qualificació` or `Qualificacions` (ignoring accents and case); without
+   one, from the last column with values. Moodle's `-` (no grade) counts as
+   no grade.
+
+Problems are reported as soon as a list is in, without waiting for the
+other one:
+
+- an error, above the boxes, when no column of names is found or when the
+  grades list has a single column;
+- a warning, below the boxes, when most "names" in the main list are a
+  single word (IDs, groups, first names only), or when the grade column has
+  no numbers.
 
 A row with a number in it is never taken as a header, and neither is a
 guessed header that matches a student of the other list, so lists that start
 directly with a student work too. Pasted text is split on tabs only, so a
 one-column paste of `Cognoms, Nom` stays whole. The preview names the header
-row left out of the result, in case a student was taken for it. The header rows, the name columns and the
-grade column can all be changed in the review step.
+row left out of the result, in case a student was taken for it. The header
+rows, the name columns and the grade column can all be changed in the review
+step.
 
 ### How names are matched
 
@@ -222,7 +238,7 @@ they are highlighted, like ambiguous students (*Dubtós*), so they can be
 checked and changed. The matching table is sorted alphabetically.
 
 - Students of the main list without a grade get a `0`, whether they are
-  missing from the grades list or listed with an empty grade.
+  missing from the grades list or listed with an empty grade (or `-`).
 - Students of the grades list missing from the main list are shown in a
   warning, with their grade, and are left out.
 

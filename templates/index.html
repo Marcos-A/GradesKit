@@ -218,12 +218,13 @@
         <div class="steps">
           <div class="field step" data-part="master">
             <span>1. Llista principal</span>
+            <p class="step-hint">Els teus estudiants, un per fila, amb els noms en una columna.</p>
             <div class="segmented" role="group" aria-label="Origen de la llista principal">
               <button type="button" class="segment is-active" data-source="paste" aria-pressed="true">Enganxa del full de càlcul</button>
               <button type="button" class="segment" data-source="file" aria-pressed="false">Puja un CSV</button>
             </div>
             <div data-block="paste">
-              <textarea rows="7" wrap="off" spellcheck="false" placeholder="Selecciona la llista al full de càlcul, amb la fila de capçalera, i enganxa-la aquí (Ctrl+V / ⌘V)."></textarea>
+              <textarea rows="7" wrap="off" spellcheck="false" placeholder="Enganxa aquí la llista d’estudiants (Ctrl+V / ⌘V)."></textarea>
             </div>
             <div data-block="file" hidden>
               <input type="file" accept=".csv,.tsv,.txt" hidden>
@@ -235,31 +236,34 @@
                 <span class="upload-placeholder">Encara no s'ha seleccionat cap fitxer.</span>
               </div>
             </div>
-            <small>Pot tenir altres columnes (identificadors, notes dels exercicis…). El resultat en segueix l’ordre.</small>
+            <small>Els noms poden ser «Nom Cognoms» o «Cognoms, Nom». Pot tenir altres columnes (identificadors, notes…); el resultat en segueix l’ordre.</small>
           </div>
 
           <div class="field step" data-part="grades">
             <span>2. Notes que vols afegir</span>
+            <p class="step-hint">Normalment, el full de qualificacions descarregat del Moodle.</p>
             <div class="segmented" role="group" aria-label="Origen de les notes">
               <button type="button" class="segment is-active" data-source="paste" aria-pressed="true">Enganxa del full de càlcul</button>
               <button type="button" class="segment" data-source="file" aria-pressed="false">Puja un CSV</button>
             </div>
             <div data-block="paste">
-              <textarea rows="7" wrap="off" spellcheck="false" placeholder="Enganxa aquí dues columnes: el nom de l’estudiant i la nota."></textarea>
+              <textarea rows="7" wrap="off" spellcheck="false" placeholder="Enganxa aquí els noms i les notes (Ctrl+V / ⌘V)."></textarea>
             </div>
             <div data-block="file" hidden>
               <input type="file" accept=".csv,.tsv,.txt" hidden>
               <div class="upload-zone" tabindex="0">
                 <strong>Arrossega aquí el CSV o fes clic per seleccionar-lo</strong>
-                <span>amb el nom i la nota de cada estudiant.</span>
+                <span>per exemple, el full de qualificacions del Moodle.</span>
               </div>
               <div class="upload-list" data-status>
                 <span class="upload-placeholder">Encara no s'ha seleccionat cap fitxer.</span>
               </div>
             </div>
-            <small>Es fa servir la columna «Qualificacions»; si no n’hi ha, l’última.</small>
+            <small>Cal una columna de noms i una de notes. La nota surt de la columna «Qualificació» o «Qualificacions»; si no n’hi ha, de l’última.</small>
           </div>
         </div>
+
+        <div class="alerts input-warnings" id="add-input-warnings"></div>
 
         <div class="review" id="add-review" hidden>
           <h2>3. Revisa</h2>

@@ -19,6 +19,7 @@
   const panel = document.getElementById("panel-add");
   const alerts = document.getElementById("add-alerts");
   const review = document.getElementById("add-review");
+  const inputWarnings = document.getElementById("add-input-warnings");
   const masterHeaderSelect = document.getElementById("add-master-header-row");
   const masterNameSelect = document.getElementById("add-master-name-column");
   const gradesHeaderSelect = document.getElementById("add-grades-header-row");
@@ -273,6 +274,9 @@
   function render() {
     for (const part of Object.values(parts)) renderFileStatus(part);
     const result = state.result;
+    inputWarnings.innerHTML = (result ? result.warnings : [])
+      .map((warning) => `<div class="alert warning">${escapeHtml(warning)}</div>`)
+      .join("");
     review.hidden = !(result && (result.master || result.grades));
     if (result && !review.hidden) {
       renderSettings(result);

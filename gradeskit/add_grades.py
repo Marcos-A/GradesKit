@@ -30,10 +30,28 @@ GRADE_HEADER_PREFIX = "qualificaci"
 OUTPUT_NAME_AND_GRADE = "name_grade"
 OUTPUT_GRADE = "grade"
 
-NO_NAME_COLUMN_MESSAGE = "No s'ha trobat cap columna amb noms d'estudiants a {part}."
+# Moodle writes "-" for an assignment without a grade.
+NO_GRADE_VALUES = ("", "-")
+
+NO_NAME_COLUMN_MESSAGE = (
+    "No s'ha trobat cap columna amb noms d'estudiants a {part}. "
+    "Hi ha d'haver una columna amb el nom de cada estudiant, per exemple «Cognoms, Nom»."
+)
 MASTER_PART = "la llista principal"
 GRADES_PART = "la llista de notes"
-TOO_FEW_COLUMNS_MESSAGE = "La llista de notes ha de tenir com a mínim dues columnes: el nom i la nota."
+TOO_FEW_COLUMNS_MESSAGE = (
+    "La llista de notes ha de tenir com a mínim dues columnes: el nom de l'estudiant i la nota, "
+    "com el full de qualificacions del Moodle."
+)
+NOT_NAMES_WARNING = (
+    "La llista principal no sembla tenir noms d'estudiants (nom i cognoms). "
+    "Revisa-la o tria la columna dels noms a «Noms de la llista principal»."
+)
+NO_STUDENTS_WARNING = "No s'ha trobat cap estudiant a la llista principal."
+NO_NUMERIC_GRADES_WARNING = (
+    "La columna «{column}» de la llista de notes no té cap nota numèrica. "
+    "Tria la columna de les notes a «Nota»."
+)
 
 
 @dataclass
@@ -102,6 +120,13 @@ def detect_list_header(rows: list[list[str]]) -> int:
     return index
 
 
+def has_full_names(values: list[str]) -> bool:
+    """Whether most non-empty values have at least a name and a surname."""
+
+    names = [value for value in values if value]
+    return sum(1 for name in names if len(name_words(name)) >= 2) * 2 >= len(names)
+
+
 def analyse_list(rows: list[list[str]], header_row: int | None, name_column: int | None, part: str) -> StudentList:
     width = len(rows[0])
     detect_header = header_row is None or not NO_HEADER <= header_row < len(rows)
@@ -112,7 +137,7 @@ def analyse_list(rows: list[list[str]], header_row: int | None, name_column: int
             name_column = detect_name_column(rows, header_row)
         except ValueError as error:
             raise ValueError(NO_NAME_COLUMN_MESSAGE.format(part=part)) from error
-    if detect_header:
+    if detect_header and has_full_names([row[name_column] for row in rows[header_row + 1 :]]):
         # Students have a name and a surname, so a one-word name cell ("Nom")
         # right after the detected header is the real header; one-column
         # lists with a title row ("Grup 1A") need this.
@@ -145,6 +170,21 @@ def header_is_student(names: StudentList, other: StudentList) -> bool:
     if len(name_words(header.name)) < 2:
         return False
     return any(match_score(header, Person(key=row, name=other.name(row))) > 0 for row in other.student_rows)
+
+
+def master_warnings(master: StudentList) -> list[str]:
+    """Warn when the main list does not look like a list of students.
+
+    Students have a name and a surname, so a name column where most values
+    are a single word (IDs, groups, first names only) is probably not one.
+    """
+
+    names = [master.name(row) for row in master.student_rows]
+    if not names:
+        return [NO_STUDENTS_WARNING]
+    if not has_full_names(names):
+        return [NOT_NAMES_WARNING]
+    return []
 
 
 def default_grade_column(grades: StudentList) -> int:
@@ -247,6 +287,7 @@ def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | N
         "output_rows": [],
         "output_first_row": 0,
         "text": "",
+        "warnings": [],
     }
     master = grades = None
     if master_rows:
@@ -264,17 +305,22 @@ def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | N
             grades = analyse_list(grade_rows, grades.header_row - 1, options.grades_name_column, GRADES_PART)
     if master:
         result["master"] = master.to_preview()
+        result["warnings"] += master_warnings(master)
     if grades:
         grade_column = options.grades_grade_column
         if grade_column is None or not 0 <= grade_column < len(grade_rows[0]):
             grade_column = default_grade_column(grades)
         result["grades"] = grades.to_preview() | {"grade_column": grade_column}
+        values = [grades.rows[row][grade_column] for row in grades.student_rows]
+        if any(value not in NO_GRADE_VALUES for value in values) and not any(parse_number(value) is not None for value in values):
+            result["warnings"].append(NO_NUMERIC_GRADES_WARNING.format(column=grades.columns[grade_column]))
     if master is None or grades is None:
         return result
 
     # A student listed without a grade gets a 0, like one not listed at all.
     def grade_of(row: int) -> str:
-        return with_decimal_comma(grades.rows[row][grade_column]) or MISSING_GRADE
+        value = grades.rows[row][grade_column]
+        return MISSING_GRADE if value in NO_GRADE_VALUES else with_decimal_comma(value)
 
     plans = plan_students(master, grades, options)
     by_row = {plan.row: plan for plan in plans}

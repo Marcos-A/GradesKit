@@ -170,6 +170,19 @@ class OutputTests(unittest.TestCase):
         rows = parse_table("Costa Pons, Oriol\nRomero, Hugo\n", keep_blank=True, delimiter="\t")
         self.assertEqual(rows, [["Costa Pons, Oriol"], ["Romero, Hugo"]])
 
+    def test_moodle_dash_means_no_grade(self):
+        grades = "Nom complet\tQualificació\nOriol Costa Pons\t-\n"
+        self.assertEqual(by_name(run(grades=grades))["Costa Pons, Oriol"]["grade"], "0")
+
+    def test_main_list_without_full_names_is_warned(self):
+        master = "Nom\tNota\nOriol\t8\nHugo\t9\nAnna\t7\n"
+        self.assertEqual(len(run(master=master)["warnings"]), 1)
+        self.assertEqual(run()["warnings"], [])
+
+    def test_grades_without_numbers_are_warned(self):
+        grades = "Nom\tQualificacions\nOriol Costa Pons\tBé\nHugo Romero\tExcel·lent\n"
+        self.assertEqual(len(run(grades=grades)["warnings"]), 1)
+
     def test_grades_need_two_columns(self):
         with self.assertRaises(ValueError):
             run(grades="Oriol Costa Pons\nHugo Romero\n")
