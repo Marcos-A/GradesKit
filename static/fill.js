@@ -346,20 +346,46 @@
     schedulePreview(400);
   });
 
+  function selectSource(source) {
+    state.source = source;
+    for (const segment of segments) {
+      const isActive = segment.dataset.source === source;
+      segment.classList.toggle("is-active", isActive);
+      segment.setAttribute("aria-pressed", String(isActive));
+    }
+    pasteBlock.hidden = source !== "paste";
+    fileBlock.hidden = source !== "file";
+  }
+
+  // The last choice is remembered in this browser only. Storage can be
+  // blocked (private windows), so failures fall back to pasting.
+  const SOURCE_KEY = "gradeskit.fill.source";
+
+  function savedSource() {
+    try {
+      return localStorage.getItem(SOURCE_KEY) === "file" ? "file" : "paste";
+    } catch {
+      return "paste";
+    }
+  }
+
+  function rememberSource(source) {
+    try {
+      localStorage.setItem(SOURCE_KEY, source);
+    } catch {
+      // Not remembered; the choice still applies until the page is reloaded.
+    }
+  }
+
   for (const segment of segments) {
     segment.addEventListener("click", () => {
-      state.source = segment.dataset.source;
-      for (const other of segments) {
-        const isActive = other === segment;
-        other.classList.toggle("is-active", isActive);
-        other.setAttribute("aria-pressed", String(isActive));
-      }
-      pasteBlock.hidden = state.source !== "paste";
-      fileBlock.hidden = state.source !== "file";
+      selectSource(segment.dataset.source);
+      rememberSource(state.source);
       resetGradeChoices();
       schedulePreview();
     });
   }
+  selectSource(savedSource());
 
   headerRowSelect.addEventListener("change", () => {
     // A different header row changes every column, so the other choices are

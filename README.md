@@ -110,7 +110,8 @@ back to Moodle.
 2. The final grades, either pasted from a spreadsheet (copying cells puts the
    displayed values on the clipboard as tab-separated text, so formulas and
    formatting are ignored) or uploaded as a CSV (comma or semicolon,
-   UTF-8 or Windows-1252).
+   UTF-8 or Windows-1252). The last choice is remembered in the browser
+   (`localStorage`).
 
 Files can be dragged onto either upload box or chosen with a click. A dropped
 file with another extension is rejected before it is sent.
@@ -186,7 +187,8 @@ with one click, ready to paste into a spreadsheet.
 ### The two lists
 
 Both lists are pasted from a spreadsheet or uploaded as a CSV, like the final
-grades of the fill tool.
+grades of the fill tool. Each list remembers the last choice in the browser
+(`localStorage`); if storage is blocked, it starts on pasting.
 
 1. **Main list**: one row per student, with the names in any column (usually
    the first or second) and any other columns (IDs, exercise grades…). Title

@@ -283,6 +283,38 @@
     state.options.matches = {};
   }
 
+  function selectSource(part, source) {
+    part.source = source;
+    for (const segment of part.segments) {
+      const isActive = segment.dataset.source === source;
+      segment.classList.toggle("is-active", isActive);
+      segment.setAttribute("aria-pressed", String(isActive));
+    }
+    part.pasteBlock.hidden = source !== "paste";
+    part.fileBlock.hidden = source !== "file";
+  }
+
+  // Each list remembers whether it was last pasted or uploaded, in this
+  // browser only. Storage can be blocked (private windows), so failures fall
+  // back to pasting.
+  const SOURCE_KEY = "gradeskit.add.source.";
+
+  function savedSource(name) {
+    try {
+      return localStorage.getItem(SOURCE_KEY + name) === "file" ? "file" : "paste";
+    } catch {
+      return "paste";
+    }
+  }
+
+  function rememberSource(name, source) {
+    try {
+      localStorage.setItem(SOURCE_KEY + name, source);
+    } catch {
+      // Not remembered; the choice still applies until the page is reloaded.
+    }
+  }
+
   for (const [name, part] of Object.entries(parts)) {
     part.zone.addEventListener("click", () => part.input.click());
     part.zone.addEventListener("keydown", (event) => {
@@ -313,18 +345,13 @@
 
     for (const segment of part.segments) {
       segment.addEventListener("click", () => {
-        part.source = segment.dataset.source;
-        for (const other of part.segments) {
-          const isActive = other === segment;
-          other.classList.toggle("is-active", isActive);
-          other.setAttribute("aria-pressed", String(isActive));
-        }
-        part.pasteBlock.hidden = part.source !== "paste";
-        part.fileBlock.hidden = part.source !== "file";
+        selectSource(part, segment.dataset.source);
+        rememberSource(name, part.source);
         resetChoices(name);
         schedulePreview();
       });
     }
+    selectSource(part, savedSource(name));
   }
 
   // Changing a header row or the name column changes which rows are
