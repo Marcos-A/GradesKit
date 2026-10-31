@@ -2,12 +2,12 @@
 
 The master list has one row per student and any other columns (IDs, exercise
 grades...). The grades list has a name and a grade per student, often with the
-names written differently. The result has one row per master row, in the same
-order, with the student's name and grade or only the grade, as tab-separated
+names written differently. The result has one row per master row after its header,
+in the same order, with the student's name and grade or only the grade, as tab-separated
 text ready to paste beside the master list in a spreadsheet.
 
 The grade is taken from the column headed "Qualificacions" and the new
-grade column is left without a header.
+result has no header.
 
 Like the fill tool, the flow is stateless: the browser sends both lists and
 the teacher's choices every time and `preview()` returns everything.
@@ -208,6 +208,7 @@ def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | N
         "unused": [],
         "summary": None,
         "output_rows": [],
+        "output_first_row": 0,
         "text": "",
     }
     master = grades = None
@@ -254,16 +255,21 @@ def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | N
         "missing": sum(1 for plan in plans if plan.grades_row is None),
     }
 
-    # One row per master row, so the result lines up when pasted beside the
-    # master. The header, title and footer rows get an empty grade.
+    # No header: the result starts after the master's header row and keeps
+    # one row per master row from there, blank rows included, so it lines up
+    # when pasted beside the first student. Empty rows at the end are dropped.
+    first_row = master.header_row + 1
     output_rows = []
-    for index, row in enumerate(master.rows):
+    for index, row in enumerate(master.rows[first_row:], start=first_row):
         grade = ""
         if index in by_row:
             plan = by_row[index]
             grade = grade_of(plan.grades_row) if plan.grades_row is not None else MISSING_GRADE
         output_rows.append([row[master.name_column], grade] if options.output == OUTPUT_NAME_AND_GRADE else [grade])
+    while output_rows and not any(output_rows[-1]):
+        output_rows.pop()
     result["output_rows"] = output_rows
+    result["output_first_row"] = first_row
     result["text"] = rows_to_tsv(output_rows)
     return result
 

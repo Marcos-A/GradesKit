@@ -105,17 +105,20 @@ class MatchingTests(unittest.TestCase):
 
 
 class OutputTests(unittest.TestCase):
-    def test_text_has_name_and_grade_per_master_row(self):
+    def test_text_has_name_and_grade_without_header(self):
         lines = run()["text"].splitlines()
-        self.assertEqual(lines[0], "\t")
-        self.assertEqual(lines[1], "ESTUDIANT\t")
-        self.assertEqual(lines[2], "Costa Pons, Oriol\t7,25")
-        self.assertEqual(lines[5], "Romero, Hugo\t0")
-        self.assertEqual(len(lines), 6)
+        self.assertEqual(lines[0], "Costa Pons, Oriol\t7,25")
+        self.assertEqual(lines[3], "Romero, Hugo\t0")
+        self.assertEqual(len(lines), 4)
 
     def test_text_can_have_only_the_grade(self):
-        lines = run(options=AddGradesOptions(output=OUTPUT_GRADE))["text"].split("\n")
-        self.assertEqual(lines[:6], ["", "", "7,25", "6", "5", "0"])
+        text = run(options=AddGradesOptions(output=OUTPUT_GRADE))["text"]
+        self.assertEqual(text, "7,25\n6\n5\n0\n")
+
+    def test_blank_rows_between_students_are_kept_and_footer_dropped(self):
+        master = "Nom\tNota\nCosta Pons, Oriol\t8\n\t\nRomero, Hugo\t9\n\t10\n"
+        text = run(master=master, options=AddGradesOptions(output=OUTPUT_GRADE))["text"]
+        self.assertEqual(text, "7,25\n\n0\n")
 
     def test_cells_with_tabs_or_line_breaks_are_quoted(self):
         self.assertEqual(rows_to_tsv([["a\tb", 'c "d"'], ["", "e\nf"]]), '"a\tb"\tc "d"\n\t"e\nf"\n')

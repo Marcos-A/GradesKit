@@ -225,15 +225,15 @@ checked and changed.
 
 ### What is copied
 
-One row per row of the main list, in the same order and blank rows
-included, so the result lines up when pasted beside it. Each row has either:
+No header: one row per row of the main list after its header, in the same
+order and blank rows included, so the result lines up when pasted beside the
+first student. Empty rows at the end, such as footers, are left out. Each row has either:
 
 - **Nom i nota**: the student's name, as written in the main list, and the
   grade; or
 - **Només la nota**: the grade alone.
 
-The choice is remembered in the browser. The header, title and footer rows
-get an empty grade (the name column keeps its header). Grades are copied as
+The choice is remembered in the browser. Grades are copied as
 written (`7,25` stays `7,25`). The text is tab-separated, which is what
 spreadsheets expect on the clipboard; only cells with a tab or a line break
 are quoted.

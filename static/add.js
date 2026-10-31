@@ -248,13 +248,11 @@
       segment.classList.toggle("is-active", isActive);
       segment.setAttribute("aria-pressed", String(isActive));
     }
-    const masterHeader = result.master.header_row;
+    // The result starts after the master's header row.
     const students = new Set(result.master.student_rows);
     const body = result.output_rows
       .map((row, rowIndex) => {
-        let rowClass = "row-ignored";
-        if (rowIndex === masterHeader) rowClass = "row-header";
-        else if (students.has(rowIndex)) rowClass = "row-student";
+        const rowClass = students.has(rowIndex + result.output_first_row) ? "row-student" : "row-ignored";
         const cells = row
           .map((cell, columnIndex) => `<td class="${columnIndex === column ? "col-grade" : ""}">${escapeHtml(cell)}</td>`)
           .join("");
