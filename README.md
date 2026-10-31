@@ -236,8 +236,8 @@ first student. Empty rows at the end, such as footers, are left out. Each row ha
   grade; or
 - **Només la nota**: the grade alone.
 
-The choice is remembered in the browser. Grades are copied as
-written (`7,25` stays `7,25`). The text is tab-separated, which is what
+The choice is remembered in the browser. Grades are copied with a
+decimal comma (`7.25` becomes `7,25`); text such as `NP` stays as written. The text is tab-separated, which is what
 spreadsheets expect on the clipboard; only cells with a tab or a line break
 are quoted.
 

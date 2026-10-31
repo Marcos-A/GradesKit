@@ -203,6 +203,19 @@ def plan_students(master: StudentList, grades: StudentList, options: AddGradesOp
     return plans
 
 
+def with_decimal_comma(value: str) -> str:
+    """Write a number with a decimal comma ("7.25" -> "7,25"); text such as
+    "NP" and numbers already written with a comma are left as they are."""
+
+    if "." not in value or parse_number(value) is None:
+        return value
+    if "," in value:
+        if value.rfind(",") > value.rfind("."):
+            return value  # "1.234,5": the comma is already the decimal one.
+        value = value.replace(",", "")  # "1,234.5": the comma groups thousands.
+    return value.replace(".", ",")
+
+
 def rows_to_tsv(rows: list[list[str]]) -> str:
     """Tab-separated text as spreadsheets put it on the clipboard.
 
@@ -261,7 +274,7 @@ def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | N
 
     # A student listed without a grade gets a 0, like one not listed at all.
     def grade_of(row: int) -> str:
-        return grades.rows[row][grade_column] or MISSING_GRADE
+        return with_decimal_comma(grades.rows[row][grade_column]) or MISSING_GRADE
 
     plans = plan_students(master, grades, options)
     by_row = {plan.row: plan for plan in plans}

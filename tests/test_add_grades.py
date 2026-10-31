@@ -11,6 +11,7 @@ from gradeskit.add_grades import (
     detect_list_header,
     preview,
     rows_to_tsv,
+    with_decimal_comma,
 )
 from gradeskit.matching import STATUS_PROBABLE, Person, match_people
 from gradeskit.tabular import parse_table
@@ -121,6 +122,16 @@ class OutputTests(unittest.TestCase):
         master = "Nom\tNota\nCosta Pons, Oriol\t8\n\t\nRomero, Hugo\t9\n\t10\n"
         text = run(master=master, options=AddGradesOptions(output=OUTPUT_GRADE))["text"]
         self.assertEqual(text, "7,25\n\n0\n")
+
+    def test_grades_use_a_decimal_comma(self):
+        grades = "Nom\tQualificacions\nOriol Costa Pons\t7.25\nHugo Romero\tNP\n"
+        text = run(grades=grades, options=AddGradesOptions(output=OUTPUT_GRADE))["text"]
+        self.assertEqual(text, "7,25\n0\n0\nNP\n")
+        self.assertEqual(with_decimal_comma("8"), "8")
+        self.assertEqual(with_decimal_comma("6,5"), "6,5")
+        self.assertEqual(with_decimal_comma("1.234,5"), "1.234,5")
+        self.assertEqual(with_decimal_comma("1,234.5"), "1234,5")
+        self.assertEqual(with_decimal_comma("Dr. Who"), "Dr. Who")
 
     def test_cells_with_tabs_or_line_breaks_are_quoted(self):
         self.assertEqual(rows_to_tsv([["a\tb", 'c "d"'], ["", "e\nf"]]), '"a\tb"\tc "d"\n\t"e\nf"\n')
