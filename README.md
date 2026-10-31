@@ -191,9 +191,9 @@ grades of the fill tool.
 1. **Main list**: one row per student, with the names in any column (usually
    the first or second) and any other columns (IDs, exercise grades…). Title
    rows above the header are allowed.
-2. **Grades to add**: the student's name and the grade. The header row is
-   optional; when present, the grade header names the new column (`Nota`
-   otherwise). By default the grade is the last column with values.
+2. **Grades to add**: the student's name and the grade. Only the column
+   headed `Qualificacions` (or `Qualificació`, ignoring accents and case) is
+   added; without one, the last column with values is used.
 
 A row with a number in it is never taken as a header, so lists that start
 directly with a student work too. The header rows, the name columns and the
@@ -219,8 +219,8 @@ checked and changed.
 ### What is copied
 
 The main list exactly as it was pasted, blank spacer rows and columns
-included, with the new column at the end. Title and footer rows get an empty
-cell, so the result can be pasted back over the original cells. Grades are
+included, with the new column at the end. The header, title and footer rows
+get an empty cell, so the result can be pasted back over the original cells. Grades are
 copied as written (`7,25` stays `7,25`). The text is tab-separated, which is
 what spreadsheets expect on the clipboard.
 

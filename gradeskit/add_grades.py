@@ -5,6 +5,9 @@ grades...). The grades list has a name and a grade per student, often with the
 names written differently. The result is the master list, unchanged, with one
 more column, as tab-separated text ready to paste into a spreadsheet.
 
+The grade is taken from the column headed "Qualificacions" and the new
+column is left without a header.
+
 Like the fill tool, the flow is stateless: the browser sends both lists and
 the teacher's choices every time and `preview()` returns everything.
 """
@@ -16,14 +19,15 @@ from dataclasses import dataclass, field
 
 from gradeskit.grades_sheet import detect_header_row, detect_name_column, looks_like_name
 from gradeskit.matching import STATUS_NONE, STATUS_PROBABLE, Person, match_people
-from gradeskit.tabular import column_letter, parse_number
+from gradeskit.tabular import column_letter, parse_number, strip_accents
 
 STATUS_MANUAL = "manual"
 STATUS_AMBIGUOUS = "ambiguous"
 NO_HEADER = -1
 NO_STUDENT = -1
 MISSING_GRADE = "0"
-DEFAULT_COLUMN_HEADER = "Nota"
+# Matches "Qualificacions" and "Qualificació", with or without accents.
+GRADE_HEADER_PREFIX = "qualificaci"
 
 NO_NAME_COLUMN_MESSAGE = "No s'ha trobat cap columna amb noms d'estudiants a {part}."
 MASTER_PART = "la llista principal"
@@ -116,9 +120,15 @@ def analyse_list(rows: list[list[str]], header_row: int | None, name_column: int
     )
 
 
-def default_grade_column(rows: list[list[str]], student_rows: list[int], name_column: int) -> int:
-    """The last column with a value for some student, other than the names."""
+def default_grade_column(grades: StudentList) -> int:
+    """The "Qualificacions" column; otherwise the last one with a value for
+    some student, other than the names."""
 
+    rows, student_rows, name_column = grades.rows, grades.student_rows, grades.name_column
+    if grades.header_row != NO_HEADER:
+        for column, header in enumerate(rows[grades.header_row]):
+            if strip_accents(header).casefold().strip().startswith(GRADE_HEADER_PREFIX):
+                return column
     for column in reversed(range(len(rows[0]))):
         if column != name_column and any(rows[row][column] for row in student_rows):
             return column
@@ -186,7 +196,6 @@ def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | N
         "students": [],
         "unused": [],
         "summary": None,
-        "column_header": DEFAULT_COLUMN_HEADER,
         "output_rows": [],
         "output_column": None,
         "text": "",
@@ -201,10 +210,8 @@ def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | N
         grades = analyse_list(grade_rows, options.grades_header_row, options.grades_name_column, GRADES_PART)
         grade_column = options.grades_grade_column
         if grade_column is None or not 0 <= grade_column < len(grade_rows[0]):
-            grade_column = default_grade_column(grade_rows, grades.student_rows, grades.name_column)
+            grade_column = default_grade_column(grades)
         result["grades"] = grades.to_preview() | {"grade_column": grade_column}
-        if grades.header_row != NO_HEADER and grade_rows[grades.header_row][grade_column]:
-            result["column_header"] = grade_rows[grades.header_row][grade_column]
     if master is None or grades is None:
         return result
 
@@ -236,13 +243,11 @@ def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | N
         "missing": sum(1 for plan in plans if plan.grades_row is None),
     }
 
-    # Title and footer rows keep an empty cell, so the master pastes back
-    # over itself unchanged apart from the new column.
+    # The header, title and footer rows keep an empty cell, so the master
+    # pastes back over itself unchanged apart from the new column.
     output_rows = []
     for index, row in enumerate(master.rows):
-        if index == master.header_row:
-            extra = result["column_header"]
-        elif index in by_row:
+        if index in by_row:
             plan = by_row[index]
             extra = grade_of(plan.grades_row) if plan.grades_row is not None else MISSING_GRADE
         else:

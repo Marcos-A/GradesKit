@@ -46,9 +46,11 @@ class ListDetectionTests(unittest.TestCase):
         rows = parse_table("Costa Pons, Oriol\t7\nRomero, Hugo\t9\n")
         self.assertEqual(detect_list_header(rows), NO_HEADER)
 
-    def test_grades_header_names_the_new_column(self):
-        self.assertEqual(run()["column_header"], "Examen")
-        self.assertEqual(run(grades="Oriol Costa Pons\t7\nHugo Romero\t9\n")["column_header"], "Nota")
+    def test_grade_comes_from_the_qualificacions_column(self):
+        grades = "Nom\tQualificacions\tComentari\nOriol Costa Pons\t7\tBé\n"
+        self.assertEqual(by_name(run(grades=grades))["Costa Pons, Oriol"]["grade"], "7")
+        grades = "Nom\tQUALIFICACIÓ\tComentari\nOriol Costa Pons\t6\tBé\n"
+        self.assertEqual(by_name(run(grades=grades))["Costa Pons, Oriol"]["grade"], "6")
 
 
 class MatchingTests(unittest.TestCase):
@@ -90,7 +92,7 @@ class OutputTests(unittest.TestCase):
     def test_text_is_the_master_plus_one_column(self):
         lines = run()["text"].splitlines()
         self.assertEqual(lines[0], "Grup 1A\t\t\t\t")
-        self.assertEqual(lines[1], "ID\tESTUDIANT\t\tExercici 1\tExamen")
+        self.assertEqual(lines[1], "ID\tESTUDIANT\t\tExercici 1\t")
         self.assertEqual(lines[2], "101\tCosta Pons, Oriol\t\t8\t7,25")
         self.assertEqual(lines[5], "104\tRomero, Hugo\t\t9\t0")
         self.assertEqual(len(lines), 6)
