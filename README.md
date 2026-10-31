@@ -201,8 +201,11 @@ grades of the fill tool. Each list remembers the last choice in the browser
    headed `Qualificacions` (or `Qualificació`, ignoring accents and case) is
    used; without one, the last column with values is used.
 
-A row with a number in it is never taken as a header, so lists that start
-directly with a student work too. The header rows, the name columns and the
+A row with a number in it is never taken as a header, and neither is a
+guessed header that matches a student of the other list, so lists that start
+directly with a student work too. Pasted text is split on tabs only, so a
+one-column paste of `Cognoms, Nom` stays whole. The preview names the header
+row left out of the result, in case a student was taken for it. The header rows, the name columns and the
 grade column can all be changed in the review step.
 
 ### How names are matched

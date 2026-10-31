@@ -192,11 +192,17 @@ def handle_fill(environ, start_response):
 
 
 def read_table_input(form: cgi.FieldStorage, name: str, keep_blank: bool = False) -> list[list[str]] | None:
-    """Rows from an uploaded CSV (`<name>_file`) or pasted text (`<name>_text`)."""
+    """Rows from an uploaded CSV (`<name>_file`) or pasted text (`<name>_text`).
+
+    Spreadsheets always copy cells as tab-separated text, so a paste is split
+    on tabs only: a one-column paste of "Cognoms, Nom" must not be read as a
+    comma-separated file.
+    """
 
     files = uploaded_files(form, f"{name}_file")
-    text = decode_text(files[0].content) if files else form.getfirst(f"{name}_text", "")
-    return parse_table(text, keep_blank=keep_blank) or None
+    if files:
+        return parse_table(decode_text(files[0].content), keep_blank=keep_blank) or None
+    return parse_table(form.getfirst(f"{name}_text", ""), keep_blank=keep_blank, delimiter="\t") or None
 
 
 def handle_add_grades_preview(environ, start_response):

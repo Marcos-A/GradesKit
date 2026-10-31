@@ -33,7 +33,9 @@ GRADES_TEXT = (
 
 
 def run(master: str = MASTER_TEXT, grades: str = GRADES_TEXT, options: AddGradesOptions | None = None) -> dict:
-    return preview(parse_table(master, keep_blank=True), parse_table(grades), options or AddGradesOptions())
+    # Both lists as pasted from a spreadsheet, split on tabs like the app does.
+    master_rows = parse_table(master, keep_blank=True, delimiter="\t")
+    return preview(master_rows, parse_table(grades, delimiter="\t"), options or AddGradesOptions())
 
 
 def by_name(result: dict) -> dict[str, dict]:
@@ -133,6 +135,29 @@ class OutputTests(unittest.TestCase):
         result = preview(parse_table(MASTER_TEXT, keep_blank=True), None, AddGradesOptions())
         self.assertIsNotNone(result["master"])
         self.assertEqual(result["text"], "")
+
+    def test_list_without_header_keeps_its_first_student(self):
+        master = "Costa Pons, Oriol\toriol@example.cat\nRomero, Hugo\thugo@example.cat\n"
+        result = run(master=master)
+        self.assertEqual(result["master"]["header_row"], NO_HEADER)
+        self.assertEqual(result["text"], "Costa Pons, Oriol\t7,25\nRomero, Hugo\t0\n")
+
+    def test_header_chosen_by_the_teacher_is_kept(self):
+        master = "Costa Pons, Oriol\nRomero, Hugo\n"
+        result = run(master=master, options=AddGradesOptions(master_header_row=0))
+        self.assertEqual(result["text"], "Romero, Hugo\t0\n")
+
+    def test_one_word_headers_are_never_students(self):
+        master = "Grup 1A\nNom\nCosta Pons, Oriol\n"
+        grades = "Nom\tQualificacions\nOriol Costa Pons\t7\n"
+        result = run(master=master, grades=grades)
+        self.assertEqual(result["grades"]["header_row"], 0)
+        self.assertEqual(result["master"]["header_row"], 1)
+        self.assertEqual(result["text"], "Costa Pons, Oriol\t7\n")
+
+    def test_one_column_paste_is_not_split_at_commas(self):
+        rows = parse_table("Costa Pons, Oriol\nRomero, Hugo\n", keep_blank=True, delimiter="\t")
+        self.assertEqual(rows, [["Costa Pons, Oriol"], ["Romero, Hugo"]])
 
     def test_grades_need_two_columns(self):
         with self.assertRaises(ValueError):

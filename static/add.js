@@ -30,6 +30,7 @@
   const matchBody = document.getElementById("add-match-body");
   const resultGroup = document.getElementById("add-result-group");
   const resultPreview = document.getElementById("add-result");
+  const resultNote = document.getElementById("add-result-note");
   const outputSegments = Array.from(document.querySelectorAll("#add-output .segment"));
   const copyButton = document.getElementById("add-copy");
   const copyStatus = document.getElementById("add-copy-status");
@@ -248,7 +249,12 @@
       segment.classList.toggle("is-active", isActive);
       segment.setAttribute("aria-pressed", String(isActive));
     }
-    // The result starts after the master's header row.
+    // The result starts after the master's header row; name it, so a
+    // student taken for a header is easy to spot.
+    const header = result.master.header_row;
+    resultNote.textContent = header === NO_HEADER
+      ? ""
+      : `No s’inclou la fila ${header + 1} de la llista principal («${truncate(result.master.rows[header].filter(Boolean).join(" · "))}») ni les anteriors. Si és un estudiant, tria «Sense capçalera» a dalt.`;
     const students = new Set(result.master.student_rows);
     const body = result.output_rows
       .map((row, rowIndex) => {

@@ -17,7 +17,7 @@ import json
 from dataclasses import dataclass, field
 
 from gradeskit.grades_sheet import detect_header_row, detect_name_column, looks_like_name
-from gradeskit.matching import STATUS_NONE, STATUS_PROBABLE, Person, match_people
+from gradeskit.matching import STATUS_NONE, STATUS_PROBABLE, Person, match_people, match_score, name_words
 from gradeskit.tabular import column_letter, parse_number, strip_accents
 
 STATUS_MANUAL = "manual"
@@ -104,13 +104,20 @@ def detect_list_header(rows: list[list[str]]) -> int:
 
 def analyse_list(rows: list[list[str]], header_row: int | None, name_column: int | None, part: str) -> StudentList:
     width = len(rows[0])
-    if header_row is None or not NO_HEADER <= header_row < len(rows):
+    detect_header = header_row is None or not NO_HEADER <= header_row < len(rows)
+    if detect_header:
         header_row = detect_list_header(rows)
     if name_column is None or not 0 <= name_column < width:
         try:
             name_column = detect_name_column(rows, header_row)
         except ValueError as error:
             raise ValueError(NO_NAME_COLUMN_MESSAGE.format(part=part)) from error
+    if detect_header:
+        # Students have a name and a surname, so a one-word name cell ("Nom")
+        # right after the detected header is the real header; one-column
+        # lists with a title row ("Grup 1A") need this.
+        while header_row + 2 < len(rows) and len(name_words(rows[header_row + 1][name_column])) == 1:
+            header_row += 1
     header = rows[header_row] if header_row != NO_HEADER else [""] * width
     return StudentList(
         rows=rows,
@@ -121,6 +128,23 @@ def analyse_list(rows: list[list[str]], header_row: int | None, name_column: int
             index for index in range(header_row + 1, len(rows)) if looks_like_name(rows[index][name_column])
         ],
     )
+
+
+def header_is_student(names: StudentList, other: StudentList) -> bool:
+    """Whether the detected header row of `names` is a student of `other`.
+
+    A list without a header whose first row has no numbers looks like it
+    starts with a header; if that "header" matches a student of the other
+    list, it is a student. Students have at least a name and a surname, so
+    one-word headers such as "Nom" never count, even if both lists use them.
+    """
+
+    if names.header_row == NO_HEADER:
+        return False
+    header = Person(key=-1, name=names.name(names.header_row))
+    if len(name_words(header.name)) < 2:
+        return False
+    return any(match_score(header, Person(key=row, name=other.name(row))) > 0 for row in other.student_rows)
 
 
 def default_grade_column(grades: StudentList) -> int:
@@ -214,11 +238,20 @@ def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | N
     master = grades = None
     if master_rows:
         master = analyse_list(master_rows, options.master_header_row, options.master_name_column, MASTER_PART)
-        result["master"] = master.to_preview()
     if grade_rows:
         if len(grade_rows[0]) < 2:
             raise ValueError(TOO_FEW_COLUMNS_MESSAGE)
         grades = analyse_list(grade_rows, options.grades_header_row, options.grades_name_column, GRADES_PART)
+    # A detected header that is really a student moves up, as in
+    # `detect_list_header`. Headers chosen by the teacher are kept.
+    if master and grades:
+        if options.master_header_row is None and header_is_student(master, grades):
+            master = analyse_list(master_rows, master.header_row - 1, options.master_name_column, MASTER_PART)
+        if options.grades_header_row is None and header_is_student(grades, master):
+            grades = analyse_list(grade_rows, grades.header_row - 1, options.grades_name_column, GRADES_PART)
+    if master:
+        result["master"] = master.to_preview()
+    if grades:
         grade_column = options.grades_grade_column
         if grade_column is None or not 0 <= grade_column < len(grade_rows[0]):
             grade_column = default_grade_column(grades)

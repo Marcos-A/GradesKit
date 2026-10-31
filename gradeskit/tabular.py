@@ -58,21 +58,21 @@ def detect_delimiter(text: str) -> str:
     return best_delimiter
 
 
-def parse_table(text: str, keep_blank: bool = False) -> list[list[str]]:
+def parse_table(text: str, keep_blank: bool = False, delimiter: str | None = None) -> list[list[str]]:
     """Parse pasted or CSV text into a rectangular grid of trimmed strings.
 
     Fully empty rows and fully empty columns (spacer columns, trailing blank
     cells selected by accident) are dropped, so indexes refer to the cleaned
     grid that the user sees in the preview. With `keep_blank`, only blank
     rows and columns at the end are dropped, so the grid can be pasted back
-    over the original cells.
+    over the original cells. `delimiter` skips the detection.
     """
 
     text = text.removeprefix(UTF8_BOM)
     if not text.strip():
         return []
 
-    delimiter = detect_delimiter(text)
+    delimiter = delimiter or detect_delimiter(text)
     rows = [
         [cell.strip() for cell in row]
         for row in csv.reader(io.StringIO(text), delimiter=delimiter)
