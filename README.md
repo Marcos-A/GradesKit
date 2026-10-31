@@ -3,6 +3,10 @@
 GradesKit is a small set of grade tools for the Moodle™ software, available at
 <https://gradeskit.marcos-a.com/>. The interface is in Catalan.
 
+Each tool has its own tab and address (`#combina`, `#omple`, `#afegeix`).
+Without one in the address, the page opens on the tool last used in that
+browser.
+
 It was previously called MoodleGradesMerger. It was renamed because the Moodle
 trademark policy does not allow "Moodle" in software or domain names. The
 repository moved from `Marcos-A/MoodleGradesMerger` to
