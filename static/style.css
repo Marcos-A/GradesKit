@@ -689,6 +689,15 @@ button:disabled {
   box-shadow: none;
 }
 
+.output-choice {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.output-choice .segment {
+  white-space: nowrap;
+}
+
 .copy-status {
   margin: 0.6rem 0 0;
   color: var(--accent-dark);

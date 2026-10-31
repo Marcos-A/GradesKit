@@ -184,9 +184,9 @@ treats every existing grade as newer and skips it.
 
 ## Add grades
 
-This tool appends a column of grades to the teacher's own student list, for
-example the grades of a new exam, and copies the result to the clipboard
-with one click, ready to paste into a spreadsheet.
+This tool finds each student's grade for the teacher's own student list, for
+example the grades of a new exam, and copies them to the clipboard with one
+click, ready to paste into a spreadsheet beside that list.
 
 ### The two lists
 
@@ -199,7 +199,7 @@ grades of the fill tool. Each list remembers the last choice in the browser
    rows above the header are allowed.
 2. **Grades to add**: the student's name and the grade. Only the column
    headed `Qualificacions` (or `Qualificació`, ignoring accents and case) is
-   added; without one, the last column with values is used.
+   used; without one, the last column with values is used.
 
 A row with a number in it is never taken as a header, so lists that start
 directly with a student work too. The header rows, the name columns and the
@@ -225,11 +225,18 @@ checked and changed.
 
 ### What is copied
 
-The main list exactly as it was pasted, blank spacer rows and columns
-included, with the new column at the end. The header, title and footer rows
-get an empty cell, so the result can be pasted back over the original cells. Grades are
-copied as written (`7,25` stays `7,25`). The text is tab-separated, which is
-what spreadsheets expect on the clipboard.
+One row per row of the main list, in the same order and blank rows
+included, so the result lines up when pasted beside it. Each row has either:
+
+- **Nom i nota**: the student's name, as written in the main list, and the
+  grade; or
+- **Només la nota**: the grade alone.
+
+The choice is remembered in the browser. The header, title and footer rows
+get an empty grade (the name column keeps its header). Grades are copied as
+written (`7,25` stays `7,25`). The text is tab-separated, which is what
+spreadsheets expect on the clipboard; only cells with a tab or a line break
+are quoted.
 
 ## Local run with Docker
 

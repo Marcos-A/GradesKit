@@ -1,19 +1,18 @@
-"""Add-grades tool: append a column of grades to the teacher's master list.
+"""Add-grades tool: find each student's grade for the teacher's master list.
 
 The master list has one row per student and any other columns (IDs, exercise
 grades...). The grades list has a name and a grade per student, often with the
-names written differently. The result is the master list, unchanged, with one
-more column, as tab-separated text ready to paste into a spreadsheet.
+names written differently. The result has one row per master row, in the same
+order, with the student's name and grade or only the grade, as tab-separated
+text ready to paste beside the master list in a spreadsheet.
 
 The grade is taken from the column headed "Qualificacions" and the new
-column is left without a header.
+grade column is left without a header.
 
 Like the fill tool, the flow is stateless: the browser sends both lists and
 the teacher's choices every time and `preview()` returns everything.
 """
 
-import csv
-import io
 import json
 from dataclasses import dataclass, field
 
@@ -28,6 +27,8 @@ NO_STUDENT = -1
 MISSING_GRADE = "0"
 # Matches "Qualificacions" and "Qualificació", with or without accents.
 GRADE_HEADER_PREFIX = "qualificaci"
+OUTPUT_NAME_AND_GRADE = "name_grade"
+OUTPUT_GRADE = "grade"
 
 NO_NAME_COLUMN_MESSAGE = "No s'ha trobat cap columna amb noms d'estudiants a {part}."
 MASTER_PART = "la llista principal"
@@ -46,6 +47,7 @@ class AddGradesOptions:
     grades_grade_column: int | None = None
     # Master row -> grades row chosen by the teacher, or NO_STUDENT for a 0.
     matches: dict[int, int] = field(default_factory=dict)
+    output: str = OUTPUT_NAME_AND_GRADE
 
     @classmethod
     def from_json(cls, text: str | None) -> "AddGradesOptions":
@@ -62,6 +64,7 @@ class AddGradesOptions:
             grades_name_column=optional_int("grades_name_column"),
             grades_grade_column=optional_int("grades_grade_column"),
             matches={int(key): int(value) for key, value in (data.get("matches") or {}).items()},
+            output=OUTPUT_GRADE if data.get("output") == OUTPUT_GRADE else OUTPUT_NAME_AND_GRADE,
         )
 
 
@@ -177,11 +180,19 @@ def plan_students(master: StudentList, grades: StudentList, options: AddGradesOp
 
 
 def rows_to_tsv(rows: list[list[str]]) -> str:
-    """Tab-separated text as spreadsheets put it on the clipboard."""
+    """Tab-separated text as spreadsheets put it on the clipboard.
 
-    buffer = io.StringIO()
-    csv.writer(buffer, delimiter="\t", lineterminator="\n").writerows(rows)
-    return buffer.getvalue()
+    Only cells with a tab, a line break or a leading quote are quoted; the
+    csv module would write a lone empty cell as `""`, which some spreadsheets
+    paste literally.
+    """
+
+    def cell(value: str) -> str:
+        if any(char in value for char in "\t\r\n") or value.startswith('"'):
+            return '"' + value.replace('"', '""') + '"'
+        return value
+
+    return "".join("\t".join(cell(value) for value in row) + "\n" for row in rows)
 
 
 def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | None, options: AddGradesOptions) -> dict:
@@ -197,7 +208,6 @@ def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | N
         "unused": [],
         "summary": None,
         "output_rows": [],
-        "output_column": None,
         "text": "",
     }
     master = grades = None
@@ -244,18 +254,16 @@ def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | N
         "missing": sum(1 for plan in plans if plan.grades_row is None),
     }
 
-    # The header, title and footer rows keep an empty cell, so the master
-    # pastes back over itself unchanged apart from the new column.
+    # One row per master row, so the result lines up when pasted beside the
+    # master. The header, title and footer rows get an empty grade.
     output_rows = []
     for index, row in enumerate(master.rows):
+        grade = ""
         if index in by_row:
             plan = by_row[index]
-            extra = grade_of(plan.grades_row) if plan.grades_row is not None else MISSING_GRADE
-        else:
-            extra = ""
-        output_rows.append(row + [extra])
+            grade = grade_of(plan.grades_row) if plan.grades_row is not None else MISSING_GRADE
+        output_rows.append([row[master.name_column], grade] if options.output == OUTPUT_NAME_AND_GRADE else [grade])
     result["output_rows"] = output_rows
-    result["output_column"] = len(master.columns)
     result["text"] = rows_to_tsv(output_rows)
     return result
 

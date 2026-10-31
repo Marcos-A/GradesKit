@@ -1,11 +1,13 @@
 // Add-grades tool: send the master list and the grades to the server, show
-// the student matching and copy the master list with the new column. As in
+// the student matching and copy each student's grade, with or without the
+// name. As in
 // the fill tool, all decisions are made server-side.
 
 (() => {
   const NO_HEADER = -1;
   const NO_STUDENT = -1;
   const HEADER_ROW_CHOICES = 15;
+  const OUTPUT_KEY = "gradeskit.add.output";
   const STATUS_LABELS = {
     exact: "Coincideix",
     probable: "Semblant",
@@ -28,6 +30,7 @@
   const matchBody = document.getElementById("add-match-body");
   const resultGroup = document.getElementById("add-result-group");
   const resultPreview = document.getElementById("add-result");
+  const outputSegments = Array.from(document.querySelectorAll("#add-output .segment"));
   const copyButton = document.getElementById("add-copy");
   const copyStatus = document.getElementById("add-copy-status");
 
@@ -62,6 +65,7 @@
       grades_name_column: null,
       grades_grade_column: null,
       matches: {},
+      output: savedOutput(),
     };
   }
 
@@ -237,7 +241,13 @@
   function renderResult(result) {
     resultGroup.hidden = !result.output_rows.length;
     if (!result.output_rows.length) return;
-    const column = result.output_column;
+    const withName = state.options.output === "name_grade";
+    const column = withName ? 1 : 0;
+    for (const segment of outputSegments) {
+      const isActive = segment.dataset.output === state.options.output;
+      segment.classList.toggle("is-active", isActive);
+      segment.setAttribute("aria-pressed", String(isActive));
+    }
     const masterHeader = result.master.header_row;
     const students = new Set(result.master.student_rows);
     const body = result.output_rows
@@ -252,9 +262,8 @@
       })
       .join("");
     const roles = result.output_rows[0].map((_, index) => {
-      if (index === result.master.name_column) return '<span class="role role-name">Nom</span>';
-      if (index === column) return '<span class="role role-grade">Nova</span>';
-      return "";
+      if (index === column) return '<span class="role role-grade">Nota</span>';
+      return '<span class="role role-name">Nom</span>';
     });
     resultPreview.innerHTML = `<table><thead><tr>${roles.map((role) => `<th>${role}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table>`;
   }
@@ -292,6 +301,15 @@
     }
     part.pasteBlock.hidden = source !== "paste";
     part.fileBlock.hidden = source !== "file";
+  }
+
+  // The output choice is remembered like the paste/CSV choices below.
+  function savedOutput() {
+    try {
+      return localStorage.getItem(OUTPUT_KEY) === "grade" ? "grade" : "name_grade";
+    } catch {
+      return "name_grade";
+    }
   }
 
   // Each list remembers whether it was last pasted or uploaded, in this
@@ -378,6 +396,18 @@
       schedulePreview();
     }
   });
+
+  for (const segment of outputSegments) {
+    segment.addEventListener("click", () => {
+      state.options.output = segment.dataset.output;
+      try {
+        localStorage.setItem(OUTPUT_KEY, state.options.output);
+      } catch {
+        // Not remembered; the choice still applies until the page is reloaded.
+      }
+      schedulePreview();
+    });
+  }
 
   copyButton.addEventListener("click", copyResult);
   render();

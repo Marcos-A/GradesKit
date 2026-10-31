@@ -14,7 +14,7 @@
         <p class="lead">
           Combina els intents de diversos qüestionaris en un sol fitxer, omple el full de qualificacions
           d’una tasca amb les teves notes finals i un comentari amb el detall de cada estudiant, o afegeix
-          una columna de notes a la teva llista d’estudiants encara que els noms no estiguin escrits igual.
+          notes a la teva llista d’estudiants encara que els noms no estiguin escrits igual.
         </p>
         <p class="lead lead-note">
           Els fitxers es processen al moment i no es desen al servidor.
@@ -208,7 +208,8 @@
 
       <section class="panel form-panel tool-panel" id="panel-add" role="tabpanel" aria-labelledby="tab-add" hidden>
         <p class="tool-intro">
-          Afegeix una columna de notes a la teva llista d’estudiants. Els noms no cal que siguin idèntics: es reconeixen
+          Troba la nota de cada estudiant de la teva llista i copia-la, amb el nom o sola, per enganxar-la al full de
+          càlcul. Els noms no cal que siguin idèntics: es reconeixen
           en ordre «Nom Cognoms» o «Cognoms, Nom», sense algun nom o cognom i amb petites diferències d’escriptura.
           Els estudiants sense nota reben un 0.
         </p>
@@ -234,7 +235,7 @@
                 <span class="upload-placeholder">Encara no s'ha seleccionat cap fitxer.</span>
               </div>
             </div>
-            <small>Els noms i totes les altres columnes (identificadors, notes dels exercicis…) es copien tal com són.</small>
+            <small>Pot tenir altres columnes (identificadors, notes dels exercicis…). El resultat en segueix l’ordre.</small>
           </div>
 
           <div class="field step" data-part="grades">
@@ -256,7 +257,7 @@
                 <span class="upload-placeholder">Encara no s'ha seleccionat cap fitxer.</span>
               </div>
             </div>
-            <small>S’afegeix la columna «Qualificacions»; si no n’hi ha, l’última. La columna nova queda sense capçalera.</small>
+            <small>Es fa servir la columna «Qualificacions»; si no n’hi ha, l’última.</small>
           </div>
         </div>
 
@@ -307,7 +308,12 @@
 
           <div class="setting-group" id="add-result-group" hidden>
             <span>Resultat</span>
+            <div class="segmented output-choice" id="add-output" role="group" aria-label="Columnes del resultat">
+              <button type="button" class="segment is-active" data-output="name_grade" aria-pressed="true">Nom i nota</button>
+              <button type="button" class="segment" data-output="grade" aria-pressed="false">Només la nota</button>
+            </div>
             <div class="table-scroll sheet-preview" id="add-result"></div>
+            <small>Una fila per cada fila de la llista principal, en el mateix ordre, perquè quadri si l’enganxes al costat.</small>
           </div>
         </div>
 

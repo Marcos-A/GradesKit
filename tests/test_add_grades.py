@@ -3,7 +3,15 @@
 import json
 import unittest
 
-from gradeskit.add_grades import NO_HEADER, NO_STUDENT, AddGradesOptions, detect_list_header, preview
+from gradeskit.add_grades import (
+    NO_HEADER,
+    NO_STUDENT,
+    OUTPUT_GRADE,
+    AddGradesOptions,
+    detect_list_header,
+    preview,
+    rows_to_tsv,
+)
 from gradeskit.matching import STATUS_PROBABLE, Person, match_people
 from gradeskit.tabular import parse_table
 
@@ -74,7 +82,7 @@ class MatchingTests(unittest.TestCase):
         grades = "Nom\tQualificacions\nOriol Costa Pons\t\nHugo Romero\t9\n"
         result = run(grades=grades)
         self.assertEqual(by_name(result)["Costa Pons, Oriol"]["grade"], "0")
-        self.assertIn("101\tCosta Pons, Oriol\t\t8\t0", result["text"].splitlines())
+        self.assertIn("Costa Pons, Oriol\t0", result["text"].splitlines())
 
     def test_students_only_in_grades_are_reported(self):
         result = run()
@@ -92,16 +100,25 @@ class MatchingTests(unittest.TestCase):
         self.assertEqual(options.master_header_row, NO_HEADER)
         self.assertEqual(options.grades_grade_column, 1)
         self.assertEqual(options.matches, {3: NO_STUDENT})
+        self.assertEqual(options.output, "name_grade")
+        self.assertEqual(AddGradesOptions.from_json('{"output": "grade"}').output, OUTPUT_GRADE)
 
 
 class OutputTests(unittest.TestCase):
-    def test_text_is_the_master_plus_one_column(self):
+    def test_text_has_name_and_grade_per_master_row(self):
         lines = run()["text"].splitlines()
-        self.assertEqual(lines[0], "Grup 1A\t\t\t\t")
-        self.assertEqual(lines[1], "ID\tESTUDIANT\t\tExercici 1\t")
-        self.assertEqual(lines[2], "101\tCosta Pons, Oriol\t\t8\t7,25")
-        self.assertEqual(lines[5], "104\tRomero, Hugo\t\t9\t0")
+        self.assertEqual(lines[0], "\t")
+        self.assertEqual(lines[1], "ESTUDIANT\t")
+        self.assertEqual(lines[2], "Costa Pons, Oriol\t7,25")
+        self.assertEqual(lines[5], "Romero, Hugo\t0")
         self.assertEqual(len(lines), 6)
+
+    def test_text_can_have_only_the_grade(self):
+        lines = run(options=AddGradesOptions(output=OUTPUT_GRADE))["text"].split("\n")
+        self.assertEqual(lines[:6], ["", "", "7,25", "6", "5", "0"])
+
+    def test_cells_with_tabs_or_line_breaks_are_quoted(self):
+        self.assertEqual(rows_to_tsv([["a\tb", 'c "d"'], ["", "e\nf"]]), '"a\tb"\tc "d"\n\t"e\nf"\n')
 
     def test_grade_column_can_be_chosen(self):
         grades = "Nom\tNota\tComentari\nOriol Costa Pons\t7\tBé\n"
