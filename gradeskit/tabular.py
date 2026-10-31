@@ -58,12 +58,14 @@ def detect_delimiter(text: str) -> str:
     return best_delimiter
 
 
-def parse_table(text: str) -> list[list[str]]:
+def parse_table(text: str, keep_blank: bool = False) -> list[list[str]]:
     """Parse pasted or CSV text into a rectangular grid of trimmed strings.
 
     Fully empty rows and fully empty columns (spacer columns, trailing blank
     cells selected by accident) are dropped, so indexes refer to the cleaned
-    grid that the user sees in the preview.
+    grid that the user sees in the preview. With `keep_blank`, only blank
+    rows and columns at the end are dropped, so the grid can be pasted back
+    over the original cells.
     """
 
     text = text.removeprefix(UTF8_BOM)
@@ -75,13 +77,19 @@ def parse_table(text: str) -> list[list[str]]:
         [cell.strip() for cell in row]
         for row in csv.reader(io.StringIO(text), delimiter=delimiter)
     ]
-    rows = [row for row in rows if any(row)]
+    if keep_blank:
+        while rows and not any(rows[-1]):
+            rows.pop()
+    else:
+        rows = [row for row in rows if any(row)]
     if not rows:
         return []
 
     width = max(len(row) for row in rows)
     rows = [row + [""] * (width - len(row)) for row in rows]
     kept_columns = [index for index in range(width) if any(row[index] for row in rows)]
+    if keep_blank:
+        kept_columns = list(range(kept_columns[-1] + 1))
     return [[row[index] for index in kept_columns] for row in rows]
 
 

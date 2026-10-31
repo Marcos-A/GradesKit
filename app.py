@@ -24,6 +24,7 @@ from gradeskit.quiz_merge import (
     normalize_percent,
     rows_to_csv_bytes,
 )
+from gradeskit.add_grades import AddGradesOptions, preview as add_grades_preview
 from gradeskit.fill import FillOptions, fill, preview
 from gradeskit.moodle_worksheet import read_worksheet
 from gradeskit.tabular import decode_text, parse_table
@@ -190,6 +191,31 @@ def handle_fill(environ, start_response):
     return file_response(start_response, payload, "text/csv; charset=utf-8", f"{stem}-omplert.csv")
 
 
+def read_table_input(form: cgi.FieldStorage, name: str, keep_blank: bool = False) -> list[list[str]] | None:
+    """Rows from an uploaded CSV (`<name>_file`) or pasted text (`<name>_text`)."""
+
+    files = uploaded_files(form, f"{name}_file")
+    text = decode_text(files[0].content) if files else form.getfirst(f"{name}_text", "")
+    return parse_table(text, keep_blank=keep_blank) or None
+
+
+def handle_add_grades_preview(environ, start_response):
+    form = parse_form(environ)
+    try:
+        options = AddGradesOptions.from_json(form.getfirst("options", ""))
+    except (ValueError, TypeError, AttributeError):
+        return json_response(start_response, HTTPStatus.BAD_REQUEST, {"error": "Les opcions enviades no són vàlides."})
+    try:
+        # The master keeps its blank rows and columns so the result pastes
+        # back over the original cells.
+        result = add_grades_preview(
+            read_table_input(form, "master", keep_blank=True), read_table_input(form, "grades"), options
+        )
+    except ValueError as error:
+        return json_response(start_response, HTTPStatus.BAD_REQUEST, {"error": str(error)})
+    return json_response(start_response, HTTPStatus.OK, result)
+
+
 def application(environ, start_response):
     """WSGI entrypoint used by the local server and the Docker container."""
 
@@ -218,6 +244,9 @@ def application(environ, start_response):
 
     if method == "POST" and path == "/fill":
         return handle_fill(environ, start_response)
+
+    if method == "POST" and path == "/api/add-grades/preview":
+        return handle_add_grades_preview(environ, start_response)
 
     payload = b"Not found"
     start_response("404 Not Found", [("Content-Type", "text/plain; charset=utf-8"), ("Content-Length", str(len(payload)))])

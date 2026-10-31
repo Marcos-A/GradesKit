@@ -12,8 +12,9 @@
         <p class="eyebrow">GradesKit · Eines de qualificacions per al Moodle</p>
         <h1>Prepara les qualificacions del Moodle sense copiar-les a mà.</h1>
         <p class="lead">
-          Combina els intents de diversos qüestionaris en un sol fitxer, o omple el full de qualificacions
-          d’una tasca amb les teves notes finals i un comentari amb el detall de cada estudiant.
+          Combina els intents de diversos qüestionaris en un sol fitxer, omple el full de qualificacions
+          d’una tasca amb les teves notes finals i un comentari amb el detall de cada estudiant, o afegeix
+          una columna de notes a la teva llista d’estudiants encara que els noms no estiguin escrits igual.
         </p>
         <p class="lead lead-note">
           Els fitxers es processen al moment i no es desen al servidor.
@@ -23,6 +24,7 @@
       <nav class="tabs" role="tablist" aria-label="Eines">
         <button type="button" class="tab" role="tab" id="tab-merge" data-tab="merge" aria-controls="panel-merge">Combina qüestionaris</button>
         <button type="button" class="tab" role="tab" id="tab-fill" data-tab="fill" aria-controls="panel-fill">Omple una tasca</button>
+        <button type="button" class="tab" role="tab" id="tab-add" data-tab="add" aria-controls="panel-add">Afegeix notes</button>
       </nav>
 
       <section class="panel form-panel tool-panel" id="panel-merge" role="tabpanel" aria-labelledby="tab-merge">
@@ -203,6 +205,115 @@
           </ol>
         </div>
       </section>
+
+      <section class="panel form-panel tool-panel" id="panel-add" role="tabpanel" aria-labelledby="tab-add" hidden>
+        <p class="tool-intro">
+          Afegeix una columna de notes a la teva llista d’estudiants. Els noms no cal que siguin idèntics: es reconeixen
+          en ordre «Nom Cognoms» o «Cognoms, Nom», sense algun nom o cognom i amb petites diferències d’escriptura.
+          Els estudiants sense nota reben un 0.
+        </p>
+        <div class="alerts" id="add-alerts"></div>
+
+        <div class="steps">
+          <div class="field step" data-part="master">
+            <span>1. Llista principal</span>
+            <div class="segmented" role="group" aria-label="Origen de la llista principal">
+              <button type="button" class="segment is-active" data-source="paste" aria-pressed="true">Enganxa del full de càlcul</button>
+              <button type="button" class="segment" data-source="file" aria-pressed="false">Puja un CSV</button>
+            </div>
+            <div data-block="paste">
+              <textarea rows="7" wrap="off" spellcheck="false" placeholder="Selecciona la llista al full de càlcul, amb la fila de capçalera, i enganxa-la aquí (Ctrl+V / ⌘V)."></textarea>
+            </div>
+            <div data-block="file" hidden>
+              <input type="file" accept=".csv,.tsv,.txt" hidden>
+              <div class="upload-zone" tabindex="0">
+                <strong>Arrossega aquí el CSV o fes clic per seleccionar-lo</strong>
+                <span>amb una fila per estudiant.</span>
+              </div>
+              <div class="upload-list" data-status>
+                <span class="upload-placeholder">Encara no s'ha seleccionat cap fitxer.</span>
+              </div>
+            </div>
+            <small>Els noms i totes les altres columnes (identificadors, notes dels exercicis…) es copien tal com són.</small>
+          </div>
+
+          <div class="field step" data-part="grades">
+            <span>2. Notes que vols afegir</span>
+            <div class="segmented" role="group" aria-label="Origen de les notes">
+              <button type="button" class="segment is-active" data-source="paste" aria-pressed="true">Enganxa del full de càlcul</button>
+              <button type="button" class="segment" data-source="file" aria-pressed="false">Puja un CSV</button>
+            </div>
+            <div data-block="paste">
+              <textarea rows="7" wrap="off" spellcheck="false" placeholder="Enganxa aquí dues columnes: el nom de l’estudiant i la nota."></textarea>
+            </div>
+            <div data-block="file" hidden>
+              <input type="file" accept=".csv,.tsv,.txt" hidden>
+              <div class="upload-zone" tabindex="0">
+                <strong>Arrossega aquí el CSV o fes clic per seleccionar-lo</strong>
+                <span>amb el nom i la nota de cada estudiant.</span>
+              </div>
+              <div class="upload-list" data-status>
+                <span class="upload-placeholder">Encara no s'ha seleccionat cap fitxer.</span>
+              </div>
+            </div>
+            <small>La fila de capçalera és opcional; si hi és, dona nom a la columna nova.</small>
+          </div>
+        </div>
+
+        <div class="review" id="add-review" hidden>
+          <h2>3. Revisa</h2>
+
+          <div class="settings">
+            <label class="setting">
+              <span>Capçalera de la llista principal</span>
+              <select id="add-master-header-row"></select>
+            </label>
+            <label class="setting">
+              <span>Noms de la llista principal</span>
+              <select id="add-master-name-column"></select>
+            </label>
+            <label class="setting">
+              <span>Capçalera de les notes</span>
+              <select id="add-grades-header-row"></select>
+            </label>
+            <label class="setting">
+              <span>Noms de les notes</span>
+              <select id="add-grades-name-column"></select>
+            </label>
+            <label class="setting">
+              <span>Nota</span>
+              <select id="add-grades-grade-column"></select>
+            </label>
+          </div>
+
+          <div id="add-match-section" hidden>
+            <h3>Correspondència d’estudiants</h3>
+            <p class="match-summary" id="add-summary"></p>
+            <div class="alerts" id="add-warnings"></div>
+            <div class="table-scroll">
+              <table class="match-table">
+                <thead>
+                  <tr>
+                    <th>Estudiant de la llista principal</th>
+                    <th>Estudiant a les notes</th>
+                    <th>Nota</th>
+                    <th>Estat</th>
+                  </tr>
+                </thead>
+                <tbody id="add-match-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="setting-group" id="add-result-group" hidden>
+            <span>Resultat</span>
+            <div class="table-scroll sheet-preview" id="add-result"></div>
+          </div>
+        </div>
+
+        <button type="button" id="add-copy" disabled>Copia el resultat</button>
+        <p class="copy-status" id="add-copy-status" role="status"></p>
+      </section>
     </main>
 
     $build_footer
@@ -212,5 +323,6 @@
     <script src="/static/tabs.js"></script>
     <script src="/static/merge.js"></script>
     <script src="/static/fill.js"></script>
+    <script src="/static/add.js"></script>
   </body>
 </html>

@@ -81,7 +81,7 @@ def _filled(row: list[str]) -> int:
     return sum(1 for cell in row if cell)
 
 
-def _looks_like_name(value: str) -> bool:
+def looks_like_name(value: str) -> bool:
     return bool(value) and bool(LETTER_PATTERN.search(value)) and parse_number(value) is None
 
 
@@ -152,7 +152,7 @@ def detect_name_column(rows: list[list[str]], header_row: int) -> int:
     best_column, best_score = None, (0, 0)
     for column in range(len(rows[0])):
         values = [row[column] for row in data_rows]
-        names = [value for value in values if _looks_like_name(value)]
+        names = [value for value in values if looks_like_name(value)]
         # Prefer "Cognoms, Nom" columns, then multi-word values.
         score = (len(names), sum(1 for value in names if "," in value or " " in value))
         if score > best_score:
@@ -200,7 +200,7 @@ def analyse_grades_sheet(
     student_rows = [
         index
         for index in range(header_row + 1, len(rows))
-        if _looks_like_name(rows[index][name_column])
+        if looks_like_name(rows[index][name_column])
     ]
     last_student = student_rows[-1] if student_rows else header_row
     # Rows after the last student without a name hold weights or maximums
@@ -209,7 +209,7 @@ def analyse_grades_sheet(
     footer_rows = [
         index
         for index in range(last_student + 1, len(rows))
-        if not _looks_like_name(rows[index][name_column]) and _filled(rows[index]) > 0
+        if not looks_like_name(rows[index][name_column]) and _filled(rows[index]) > 0
     ]
 
     index_column = detect_index_column(rows, student_rows, name_column)

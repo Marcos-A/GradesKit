@@ -20,6 +20,9 @@ SCORE_SAME_WORDS = 3
 SCORE_SUBSET = 2
 SCORE_SIMILAR = 1
 SIMILARITY_THRESHOLD = 0.88
+# Per word, so "Garcia" / "Garsia" and "Ana" / "Anna" pass but "Pau" / "Pol"
+# and "Joan" / "Juan" do not.
+WORD_SIMILARITY_THRESHOLD = 0.8
 NON_WORD_PATTERN = re.compile(r"[^\w]+", re.UNICODE)
 
 
@@ -68,7 +71,14 @@ def match_score(left: Person, right: Person) -> int:
     ratio = SequenceMatcher(None, " ".join(left_words), " ".join(right_words)).ratio()
     if ratio >= SIMILARITY_THRESHOLD:
         return SCORE_SIMILAR
+    # A missing word and a typo together: "Garsia, Maria" / "Maria Garcia Puig".
+    if len(shorter) >= 2 and all(any(similar_words(word, other) for other in longer) for word in shorter):
+        return SCORE_SIMILAR
     return 0
+
+
+def similar_words(left: str, right: str) -> bool:
+    return SequenceMatcher(None, left, right).ratio() >= WORD_SIMILARITY_THRESHOLD
 
 
 def match_people(participants: list[Person], students: list[Person]) -> dict[int, Match]:

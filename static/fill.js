@@ -19,7 +19,7 @@
   const worksheetInput = document.getElementById("worksheet-input");
   const worksheetZone = document.getElementById("worksheet-zone");
   const worksheetStatus = document.getElementById("worksheet-status");
-  const segments = Array.from(document.querySelectorAll(".segment"));
+  const segments = Array.from(document.querySelectorAll("#panel-fill .segment"));
   const pasteBlock = document.getElementById("grades-paste-block");
   const fileBlock = document.getElementById("grades-file-block");
   const gradesText = document.getElementById("grades-text");

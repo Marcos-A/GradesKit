@@ -177,6 +177,53 @@ than in the spreadsheet*. Moodle cannot parse localised dates such as
 `dimecres, 7 d’octubre 2026` in the worksheet, so without that option it
 treats every existing grade as newer and skips it.
 
+## Add grades
+
+This tool appends a column of grades to the teacher's own student list, for
+example the grades of a new exam, and copies the result to the clipboard
+with one click, ready to paste into a spreadsheet.
+
+### The two lists
+
+Both lists are pasted from a spreadsheet or uploaded as a CSV, like the final
+grades of the fill tool.
+
+1. **Main list**: one row per student, with the names in any column (usually
+   the first or second) and any other columns (IDs, exercise grades…). Title
+   rows above the header are allowed.
+2. **Grades to add**: the student's name and the grade. The header row is
+   optional; when present, the grade header names the new column (`Nota`
+   otherwise). By default the grade is the last column with values.
+
+A row with a number in it is never taken as a header, so lists that start
+directly with a student work too. The header rows, the name columns and the
+grade column can all be changed in the review step.
+
+### How names are matched
+
+It uses the same matching as the fill tool: `Nom Cognoms` and
+`Cognoms, Nom` are the same person, accents and punctuation are ignored, and
+a missing middle name or second surname is accepted. A missing word combined
+with a small spelling difference (`Garsia, Maria` / `María García Puig`) is
+also accepted when every word of the shorter name is close to a word of the
+longer one.
+
+Unlike the fill tool, close matches (*Semblant*) are used straight away;
+they are listed first, with ambiguous students (*Dubtós*), so they can be
+checked and changed.
+
+- Students of the main list without a grade get a `0`.
+- Students of the grades list missing from the main list are shown in a
+  warning, with their grade, and are left out.
+
+### What is copied
+
+The main list exactly as it was pasted, blank spacer rows and columns
+included, with the new column at the end. Title and footer rows get an empty
+cell, so the result can be pasted back over the original cells. Grades are
+copied as written (`7,25` stays `7,25`). The text is tab-separated, which is
+what spreadsheets expect on the clipboard.
+
 ## Local run with Docker
 
 Build and run locally:
@@ -206,6 +253,7 @@ Passing a percentage switches to weighted mode. The CLI uses the same logic as t
 - [`static/`](static/): stylesheet and the browser scripts for each tool
 - [`gradeskit/quiz_merge.py`](gradeskit/quiz_merge.py): quiz parsing, grade calculation, and CSV generation
 - [`gradeskit/fill.py`](gradeskit/fill.py): fill tool flow (preview and filled worksheet)
+- [`gradeskit/add_grades.py`](gradeskit/add_grades.py): add-grades tool (list detection, matching and copied text)
 - [`gradeskit/moodle_worksheet.py`](gradeskit/moodle_worksheet.py): grading worksheet headers per language, reading and writing
 - [`gradeskit/grades_sheet.py`](gradeskit/grades_sheet.py): detection of header, name, grade, weights and footer rows in the teacher's sheet
 - [`gradeskit/matching.py`](gradeskit/matching.py): student name matching

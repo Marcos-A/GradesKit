@@ -1,8 +1,8 @@
-// Switch between the tools. The URL hash (#combina / #omple) keeps the
+// Switch between the tools. The URL hash (#combina / #omple / #afegeix) keeps the
 // selected tool when the page is reloaded or shared.
 
 (() => {
-  const HASHES = { merge: "#combina", fill: "#omple" };
+  const HASHES = { merge: "#combina", fill: "#omple", add: "#afegeix" };
   const tabs = Array.from(document.querySelectorAll(".tab"));
 
   function selectTab(name, updateHash = true) {
