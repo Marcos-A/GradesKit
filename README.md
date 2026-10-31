@@ -218,8 +218,8 @@ also accepted when every word of the shorter name is close to a word of the
 longer one.
 
 Unlike the fill tool, close matches (*Semblant*) are used straight away;
-they are listed first, with ambiguous students (*Dubtós*), so they can be
-checked and changed.
+they are highlighted, like ambiguous students (*Dubtós*), so they can be
+checked and changed. The matching table is sorted alphabetically.
 
 - Students of the main list without a grade get a `0`, whether they are
   missing from the grades list or listed with an empty grade.

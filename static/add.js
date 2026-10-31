@@ -213,12 +213,10 @@
       : "";
 
     const studentOptions = result.grades.student_rows.map((row) => [row, result.grades.rows[row][result.grades.name_column]]);
-    // Rows that still need a look come first.
-    const order = { ambiguous: 0, probable: 1, none: 2 };
-    const students = result.students
-      .map((student, index) => ({ student, index }))
-      .sort((a, b) => (order[a.student.status] ?? 3) - (order[b.student.status] ?? 3) || a.index - b.index)
-      .map(({ student }) => student);
+    // Alphabetical with Catalan rules, so accents don't push names to the end
+    // ("Àvila" sorts with "Avila"); the copied result keeps the main list's order.
+    const collator = new Intl.Collator("ca", { sensitivity: "base", numeric: true });
+    const students = result.students.slice().sort((a, b) => collator.compare(a.name, b.name));
     matchBody.innerHTML = students
       .map((student) => {
         const selected = student.grades_row ?? NO_STUDENT;
