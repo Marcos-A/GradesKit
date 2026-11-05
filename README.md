@@ -343,3 +343,7 @@ and the `release` (or `null`). The page footer shows `v2.0.0 · 3507843`, or
 `Build unknown` when the image was built without `scripts/deploy.sh` (for
 example a plain `docker build`). With `REPO_VISIBILITY=private` it shows only
 the release.
+
+## License
+
+This project is licensed under `AGPL-3.0-only`. See [LICENSE](LICENSE).
