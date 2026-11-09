@@ -8,9 +8,10 @@ import cgi
 import json
 import os
 from http import HTTPStatus
+from socketserver import ThreadingMixIn
 from string import Template
 from urllib.parse import quote
-from wsgiref.simple_server import make_server
+from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from gradeskit.build_info import footer_html, get_build_info
 from gradeskit.quiz_merge import (
@@ -259,8 +260,24 @@ def application(environ, start_response):
     return [payload]
 
 
+class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
+    """Serves each request in its own thread, so one slow upload cannot block everyone else."""
+
+    daemon_threads = True
+
+
+class TimeoutRequestHandler(WSGIRequestHandler):
+    """Drops a connection that stays silent for a minute instead of holding a thread forever."""
+
+    timeout = 60
+
+
+def create_server(host: str, port: int):
+    return make_server(host, port, application, ThreadingWSGIServer, TimeoutRequestHandler)
+
+
 if __name__ == "__main__":
     # Bind to all interfaces so the app also works inside Docker.
     port = int(os.environ.get("PORT", "8000"))
-    with make_server("0.0.0.0", port, application) as server:
+    with create_server("0.0.0.0", port) as server:
         server.serve_forever()
