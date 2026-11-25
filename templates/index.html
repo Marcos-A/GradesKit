@@ -152,8 +152,14 @@
             </label>
           </div>
 
-          <div class="setting-group">
-            <span>Columnes del comentari i pes de cada apartat</span>
+          <div class="setting-group" role="group" aria-labelledby="opt-feedback-label">
+            <div class="column-picker-heading">
+              <span id="opt-feedback-label">Columnes del comentari i pes de cada apartat</span>
+              <label class="inline-check column-picker-all" hidden>
+                <input type="checkbox" id="opt-feedback-select-all" aria-controls="opt-feedback-columns">
+                <span>Totes les columnes</span>
+              </label>
+            </div>
             <div class="chips" id="opt-feedback-columns"></div>
             <small id="weights-help"></small>
             <label class="inline-check" id="opt-include-footer-field" hidden>
@@ -288,7 +294,13 @@
           </div>
 
           <div class="setting-group" id="add-grade-selection" role="group" aria-labelledby="add-grade-label" hidden>
-            <span id="add-grade-label">Columnes de notes</span>
+            <div class="column-picker-heading">
+              <span id="add-grade-label">Columnes de notes</span>
+              <label class="inline-check column-picker-all" hidden>
+                <input type="checkbox" id="add-grade-select-all" aria-controls="add-grade-columns">
+                <span>Totes les columnes</span>
+              </label>
+            </div>
             <div class="chips" id="add-grade-columns"></div>
             <small id="add-grade-selection-hint" role="status"></small>
           </div>

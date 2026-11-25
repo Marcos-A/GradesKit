@@ -191,6 +191,7 @@
         </span>`;
       })
       .join("");
+    syncFeedbackSelection();
     if (focused !== undefined) {
       const field = feedbackColumns.querySelector(`[data-weight="${focused}"]`);
       if (field) field.focus();
@@ -412,15 +413,17 @@
     schedulePreview();
   });
 
+  const syncFeedbackSelection = bindColumnSelection(feedbackColumns, document.getElementById("opt-feedback-select-all"), (selected) => {
+    state.options.feedback_columns = selected;
+    schedulePreview();
+  });
+
   feedbackColumns.addEventListener("change", (event) => {
-    if (event.target.dataset.weight !== undefined) {
-      // Once the teacher edits a weight, every field is sent as it stands.
-      state.options.weights = Object.fromEntries(
-        Array.from(feedbackColumns.querySelectorAll("[data-weight]")).map((input) => [input.dataset.weight, input.value]),
-      );
-    } else {
-      state.options.feedback_columns = Array.from(feedbackColumns.querySelectorAll('input[type="checkbox"]:checked')).map((input) => Number(input.value));
-    }
+    if (event.target.dataset.weight === undefined) return;
+    // Once the teacher edits a weight, every field is sent as it stands.
+    state.options.weights = Object.fromEntries(
+      Array.from(feedbackColumns.querySelectorAll("[data-weight]")).map((input) => [input.dataset.weight, input.value]),
+    );
     schedulePreview();
   });
 
