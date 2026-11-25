@@ -478,6 +478,12 @@ textarea:focus {
   cursor: pointer;
 }
 
+#add-grade-columns .chip-toggle,
+#add-grade-columns .chip-toggle span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .chip-toggle input[type="checkbox"],
 .inline-check input {
   width: auto;

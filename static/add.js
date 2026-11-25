@@ -1,7 +1,6 @@
 // Add-grades tool: send the master list and the grades to the server, show
-// the student matching and copy each student's grade, with or without the
-// name. As in
-// the fill tool, all decisions are made server-side.
+// the student matching and copy each student's selected grades, with or
+// without the name. As in the fill tool, matching is done server-side.
 
 (() => {
   const NO_HEADER = -1;
@@ -24,10 +23,13 @@
   const masterNameSelect = document.getElementById("add-master-name-column");
   const gradesHeaderSelect = document.getElementById("add-grades-header-row");
   const gradesNameSelect = document.getElementById("add-grades-name-column");
-  const gradesGradeSelect = document.getElementById("add-grades-grade-column");
+  const gradeSelection = document.getElementById("add-grade-selection");
+  const gradeColumns = document.getElementById("add-grade-columns");
+  const gradeSelectionHint = document.getElementById("add-grade-selection-hint");
   const matchSection = document.getElementById("add-match-section");
   const summary = document.getElementById("add-summary");
   const warnings = document.getElementById("add-warnings");
+  const matchHead = document.getElementById("add-match-head");
   const matchBody = document.getElementById("add-match-body");
   const resultGroup = document.getElementById("add-result-group");
   const resultPreview = document.getElementById("add-result");
@@ -65,7 +67,7 @@
       master_name_column: null,
       grades_header_row: null,
       grades_name_column: null,
-      grades_grade_column: null,
+      grades_grade_columns: null,
       matches: {},
       output: savedOutput(),
     };
@@ -90,8 +92,7 @@
 
   // --- Server round trips -------------------------------------------------
 
-  async function refreshPreview() {
-    copyStatus.textContent = "";
+  async function refreshPreview(requestId) {
     if (!Object.values(parts).some(hasInput)) {
       state.result = null;
       showError(alerts, "");
@@ -99,27 +100,29 @@
       return;
     }
 
-    // Ignore responses that arrive after a newer request was sent.
-    const requestId = ++state.requestId;
-    const response = await fetch("/api/add-grades/preview", { method: "POST", body: buildFormData() });
-    if (requestId !== state.requestId) {
-      return;
+    let result = null;
+    let error = "";
+    try {
+      const response = await fetch("/api/add-grades/preview", { method: "POST", body: buildFormData() });
+      if (response.ok) result = await response.json();
+      else error = await readError(response);
+    } catch {
+      error = "No s’ha pogut actualitzar la vista prèvia. Torna-ho a provar.";
     }
-    if (!response.ok) {
-      state.result = null;
-      showError(alerts, await readError(response));
-      render();
-      return;
-    }
-    showError(alerts, "");
-    state.result = await response.json();
+    if (requestId !== state.requestId) return;
+    state.result = result;
+    showError(alerts, error);
     render();
   }
 
   let previewTimer = null;
   function schedulePreview(delay = 0) {
+    // A change invalidates the old clipboard text while its preview loads.
+    const requestId = ++state.requestId;
+    copyButton.disabled = true;
+    copyStatus.textContent = "";
     window.clearTimeout(previewTimer);
-    previewTimer = window.setTimeout(refreshPreview, delay);
+    previewTimer = window.setTimeout(() => refreshPreview(requestId), delay);
   }
 
   // The Clipboard API needs HTTPS (or localhost); the hidden textarea keeps
@@ -143,8 +146,10 @@
   }
 
   async function copyResult() {
-    if (!state.result || !state.result.text) return;
+    if (copyButton.disabled) return;
+    const requestId = state.requestId;
     const copied = await copyText(state.result.text);
+    if (requestId !== state.requestId) return;
     copyStatus.textContent = copied
       ? "Copiat. Enganxa’l al full de càlcul (Ctrl+V / ⌘V)."
       : "No s’ha pogut copiar. Torna-ho a provar.";
@@ -183,7 +188,8 @@
   function renderSettings(result) {
     const { master, grades } = result;
     for (const select of [masterHeaderSelect, masterNameSelect]) select.closest(".setting").hidden = !master;
-    for (const select of [gradesHeaderSelect, gradesNameSelect, gradesGradeSelect]) select.closest(".setting").hidden = !grades;
+    for (const select of [gradesHeaderSelect, gradesNameSelect]) select.closest(".setting").hidden = !grades;
+    gradeSelection.hidden = !grades;
     if (master) {
       masterHeaderSelect.innerHTML = headerOptions(master);
       masterNameSelect.innerHTML = columnOptions(master, master.name_column);
@@ -191,28 +197,59 @@
     if (grades) {
       gradesHeaderSelect.innerHTML = headerOptions(grades);
       gradesNameSelect.innerHTML = columnOptions(grades, grades.name_column);
-      gradesGradeSelect.innerHTML = columnOptions(grades, grades.grade_column);
+      renderGradeSelection(grades);
     }
   }
 
-  function renderMatches(result) {
+  function renderGradeSelection(grades) {
+    // Reuse the checkbox elements across previews to keep keyboard focus.
+    const layout = JSON.stringify([grades.columns, grades.name_column]);
+    if (gradeColumns.dataset.layout !== layout) {
+      gradeColumns.innerHTML = grades.columns.map((label, index) => {
+        if (index === grades.name_column) return "";
+        return `<label class="chip-toggle"><input type="checkbox" value="${index}"><span>${escapeHtml(label)}</span></label>`;
+      }).join("");
+      gradeColumns.dataset.layout = layout;
+    }
+    const selected = new Set(grades.grade_columns);
+    for (const input of gradeColumns.querySelectorAll("input")) {
+      input.checked = selected.has(Number(input.value));
+    }
+    showGradeSelectionHint(selected.size);
+  }
+
+  function showGradeSelectionHint(count) {
+    gradeSelectionHint.textContent = count ? "" : "Tria com a mínim una columna.";
+    gradeSelectionHint.hidden = count > 0;
+  }
+
+  function renderMatches(result, gradeLabels) {
     const counts = result.summary;
     matchSection.hidden = !counts;
     if (!counts) return;
 
-    const pieces = [`<strong>${counts.matched}</strong> de ${counts.students} estudiants tenen nota`];
+    const pieces = [`<strong>${counts.matched}</strong> de ${counts.students} estudiants amb correspondència`];
     if (counts.review) pieces.push(`<strong>${counts.review}</strong> per revisar`);
-    if (counts.missing) pieces.push(`${counts.missing} sense nota (reben un 0)`);
+    if (counts.missing) pieces.push(`${counts.missing} sense correspondència${gradeLabels.length ? " (reben un 0 a cada columna)" : ""}`);
     summary.innerHTML = pieces.join(" · ");
 
     warnings.innerHTML = result.unused.length
       ? `<div class="alert warning">
            ${result.unused.length === 1 ? "Aquest estudiant de les notes no és" : `Aquests ${result.unused.length} estudiants de les notes no són`}
-           a la llista principal i la seva nota no s’afegirà:
-           ${result.unused.map((student) => `<strong>${escapeHtml(student.name)}</strong> (${escapeHtml(student.grade)})`).join(", ")}.
+           a la llista principal:
+           ${result.unused.map((student) => {
+             const values = student.grades.length ? ` (${escapeHtml(student.grades.join(" · "))})` : "";
+             return `<strong>${escapeHtml(student.name)}</strong>${values}`;
+           }).join(", ")}.
          </div>`
       : "";
 
+    matchHead.innerHTML = `<tr>
+      <th scope="col">Estudiant de la llista principal</th>
+      <th scope="col">Estudiant a les notes</th>
+      ${gradeLabels.map((label) => `<th scope="col">${escapeHtml(label)}</th>`).join("")}
+      <th scope="col">Estat</th>
+    </tr>`;
     const studentOptions = result.grades.student_rows.map((row) => [row, result.grades.rows[row][result.grades.name_column]]);
     // Alphabetical with Catalan rules, so accents don't push names to the end
     // ("Àvila" sorts with "Avila"); the copied result keeps the main list's order.
@@ -231,18 +268,17 @@
         return `<tr class="status-${rowStatus}">
           <td>${escapeHtml(student.name)}${note}</td>
           <td><select data-row="${student.row}" aria-label="Estudiant per a ${escapeHtml(student.name)}">${options}</select></td>
-          <td class="grade-cell">${escapeHtml(student.grade)}</td>
+          ${student.grades.map((grade) => `<td class="grade-cell">${escapeHtml(grade)}</td>`).join("")}
           <td><span class="status status-badge-${rowStatus}">${STATUS_LABELS[student.status]}</span></td>
         </tr>`;
       })
       .join("");
   }
 
-  function renderResult(result) {
+  function renderResult(result, gradeLabels) {
     resultGroup.hidden = !result.output_rows.length;
     if (!result.output_rows.length) return;
     const withName = state.options.output === "name_grade";
-    const column = withName ? 1 : 0;
     for (const segment of outputSegments) {
       const isActive = segment.dataset.output === state.options.output;
       segment.classList.toggle("is-active", isActive);
@@ -259,16 +295,14 @@
       .map((row, rowIndex) => {
         const rowClass = students.has(rowIndex + result.output_first_row) ? "row-student" : "row-ignored";
         const cells = row
-          .map((cell, columnIndex) => `<td class="${columnIndex === column ? "col-grade" : ""}">${escapeHtml(cell)}</td>`)
+          .map((cell, index) => `<td${withName && index === 0 ? "" : ' class="col-grade"'}>${escapeHtml(cell)}</td>`)
           .join("");
         return `<tr class="${rowClass}">${cells}</tr>`;
       })
       .join("");
-    const roles = result.output_rows[0].map((_, index) => {
-      if (index === column) return '<span class="role role-grade">Nota</span>';
-      return '<span class="role role-name">Nom</span>';
-    });
-    resultPreview.innerHTML = `<table><thead><tr>${roles.map((role) => `<th>${role}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table>`;
+    const roles = gradeLabels.map((label) => `<span class="role role-grade">${escapeHtml(label)}</span>`);
+    if (withName) roles.unshift('<span class="role role-name">Nom</span>');
+    resultPreview.innerHTML = `<table><thead><tr>${roles.map((role) => `<th scope="col">${role}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table>`;
   }
 
   function render() {
@@ -280,8 +314,9 @@
     review.hidden = !(result && (result.master || result.grades));
     if (result && !review.hidden) {
       renderSettings(result);
-      renderMatches(result);
-      renderResult(result);
+      const gradeLabels = result.grades?.grade_columns.map((column) => result.grades.columns[column]) ?? [];
+      renderMatches(result, gradeLabels);
+      renderResult(result, gradeLabels);
     }
     copyButton.disabled = !(result && result.text);
   }
@@ -296,6 +331,7 @@
       if (key.startsWith(prefix)) state.options[key] = null;
     }
     state.options.matches = {};
+    if (name === "grades") gradeSelection.hidden = true;
   }
 
   function selectSource(part, source) {
@@ -381,19 +417,28 @@
   // Changing a header row or the name column changes which rows are
   // students, so the manual matches start again.
   const settings = [
-    [masterHeaderSelect, "master_header_row", true],
-    [masterNameSelect, "master_name_column", true],
-    [gradesHeaderSelect, "grades_header_row", true],
-    [gradesNameSelect, "grades_name_column", true],
-    [gradesGradeSelect, "grades_grade_column", false],
+    [masterHeaderSelect, "master_header_row"],
+    [masterNameSelect, "master_name_column"],
+    [gradesHeaderSelect, "grades_header_row"],
+    [gradesNameSelect, "grades_name_column"],
   ];
-  for (const [select, key, resetsMatches] of settings) {
+  for (const [select, key] of settings) {
     select.addEventListener("change", () => {
       state.options[key] = Number(select.value);
-      if (resetsMatches) state.options.matches = {};
+      state.options.matches = {};
+      if (key === "grades_name_column") {
+        state.options.grades_grade_columns = state.options.grades_grade_columns?.filter((column) => column !== Number(select.value)) ?? null;
+      }
       schedulePreview();
     });
   }
+
+  gradeColumns.addEventListener("change", () => {
+    const selected = Array.from(gradeColumns.querySelectorAll("input:checked"), (input) => Number(input.value));
+    state.options.grades_grade_columns = selected;
+    showGradeSelectionHint(selected.length);
+    schedulePreview();
+  });
 
   matchBody.addEventListener("change", (event) => {
     const select = event.target.closest("select[data-row]");

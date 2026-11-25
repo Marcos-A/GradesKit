@@ -208,7 +208,7 @@
 
       <section class="panel form-panel tool-panel" id="panel-add" role="tabpanel" aria-labelledby="tab-add" hidden>
         <p class="tool-intro">
-          Troba la nota de cada estudiant de la teva llista i copia-la, amb el nom o sola, per enganxar-la al full de
+          Troba les notes de cada estudiant de la teva llista i copia-les, amb el nom o sense, per enganxar-les al full de
           càlcul. Els noms no cal que siguin idèntics: es reconeixen
           en ordre «Nom Cognoms» o «Cognoms, Nom», sense algun nom o cognom i amb petites diferències d’escriptura.
           Els estudiants sense nota reben un 0.
@@ -259,7 +259,7 @@
                 <span class="upload-placeholder">Encara no s'ha seleccionat cap fitxer.</span>
               </div>
             </div>
-            <small>Cal una columna de noms i una de notes. La nota surt de la columna «Qualificació» o «Qualificacions»; si no n’hi ha, de l’última.</small>
+            <small>Cal una columna de noms i com a mínim una de notes. A la revisió pots triar quines columnes vols afegir.</small>
           </div>
         </div>
 
@@ -285,10 +285,12 @@
               <span>Noms de les notes</span>
               <select id="add-grades-name-column"></select>
             </label>
-            <label class="setting">
-              <span>Nota</span>
-              <select id="add-grades-grade-column"></select>
-            </label>
+          </div>
+
+          <div class="setting-group" id="add-grade-selection" role="group" aria-labelledby="add-grade-label" hidden>
+            <span id="add-grade-label">Columnes de notes</span>
+            <div class="chips" id="add-grade-columns"></div>
+            <small id="add-grade-selection-hint" role="status"></small>
           </div>
 
           <div id="add-match-section" hidden>
@@ -297,14 +299,7 @@
             <div class="alerts" id="add-warnings"></div>
             <div class="table-scroll">
               <table class="match-table">
-                <thead>
-                  <tr>
-                    <th>Estudiant de la llista principal</th>
-                    <th>Estudiant a les notes</th>
-                    <th>Nota</th>
-                    <th>Estat</th>
-                  </tr>
-                </thead>
+                <thead id="add-match-head"></thead>
                 <tbody id="add-match-body"></tbody>
               </table>
             </div>
@@ -313,8 +308,8 @@
           <div class="setting-group" id="add-result-group" hidden>
             <span>Resultat</span>
             <div class="segmented output-choice" id="add-output" role="group" aria-label="Columnes del resultat">
-              <button type="button" class="segment is-active" data-output="name_grade" aria-pressed="true">Nom i nota</button>
-              <button type="button" class="segment" data-output="grade" aria-pressed="false">Només la nota</button>
+              <button type="button" class="segment is-active" data-output="name_grade" aria-pressed="true">Nom i notes</button>
+              <button type="button" class="segment" data-output="grade" aria-pressed="false">Només les notes</button>
             </div>
             <div class="table-scroll sheet-preview" id="add-result"></div>
             <small>Sense capçalera: una fila per cada estudiant de la llista principal, en el mateix ordre. Enganxa-ho al costat del primer estudiant.</small>
