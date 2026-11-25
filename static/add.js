@@ -215,6 +215,7 @@
     for (const input of gradeColumns.querySelectorAll("input")) {
       input.checked = selected.has(Number(input.value));
     }
+    syncGradeSelection();
     showGradeSelectionHint(selected.size);
   }
 
@@ -433,8 +434,7 @@
     });
   }
 
-  gradeColumns.addEventListener("change", () => {
-    const selected = Array.from(gradeColumns.querySelectorAll("input:checked"), (input) => Number(input.value));
+  const syncGradeSelection = bindColumnSelection(gradeColumns, document.getElementById("add-grade-select-all"), (selected) => {
     state.options.grades_grade_columns = selected;
     showGradeSelectionHint(selected.length);
     schedulePreview();

@@ -442,7 +442,8 @@ textarea:focus {
 }
 
 .setting > span,
-.setting-group > span {
+.setting-group > span,
+.column-picker-heading > span {
   font-weight: 700;
   font-size: 0.92rem;
 }
@@ -517,6 +518,19 @@ textarea:focus {
   gap: 0.5rem;
   font-size: 0.92rem;
   cursor: pointer;
+}
+
+.column-picker-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.15rem 1rem;
+}
+
+.column-picker-all {
+  min-height: 32px;
+  color: var(--muted);
 }
 
 .table-scroll {

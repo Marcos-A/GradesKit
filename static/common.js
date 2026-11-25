@@ -13,6 +13,29 @@ function showError(container, message) {
   container.innerHTML = message ? `<div class="alert error">${escapeHtml(message)}</div>` : "";
 }
 
+function bindColumnSelection(container, selectAll, onChange) {
+  const controls = () => Array.from(container.querySelectorAll('input[type="checkbox"]'));
+  const selectAllLabel = selectAll.closest("label");
+
+  function sync() {
+    const columns = controls();
+    const selected = columns.filter((input) => input.checked);
+    selectAllLabel.hidden = columns.length < 2;
+    selectAll.checked = columns.length > 0 && selected.length === columns.length;
+    selectAll.indeterminate = selected.length > 0 && !selectAll.checked;
+    return selected.map((input) => Number(input.value));
+  }
+
+  container.addEventListener("change", (event) => {
+    if (event.target.type === "checkbox") onChange(sync());
+  });
+  selectAll.addEventListener("change", () => {
+    for (const input of controls()) input.checked = selectAll.checked;
+    onChange(sync());
+  });
+  return sync;
+}
+
 // Error responses are JSON (`{"error": "..."}`); anything else is treated as
 // a generic failure so the user still gets a message.
 async function readError(response) {
