@@ -142,6 +142,30 @@ class OutputTests(unittest.TestCase):
         options = AddGradesOptions(grades_grade_column=1)
         self.assertEqual(by_name(run(grades=grades, options=options))["Costa Pons, Oriol"]["grade"], "7")
 
+    def test_multiple_columns_keep_source_order_and_master_row_alignment(self):
+        master = "Nom\tNota\nRomero, Hugo\t9\n\t\nCosta Pons, Oriol\t8\nMir Sala, Berta Aina\t4\n"
+        grades = "Nom\tPràctica\tGrup\tExamen\nOriol Costa Pons\t7.25\tA\t-\nLaia Ferrer Soler\t8\tA\tNP\n"
+        options = AddGradesOptions.from_json('{"grades_grade_columns": [3, 1, 3, 0], "matches": {"1": 2}}')
+        result = run(master=master, grades=grades, options=options)
+
+        self.assertEqual(result["grades"]["grade_columns"], [1, 3])
+        self.assertEqual(by_name(result)["Romero, Hugo"]["grades"], ["8", "NP"])
+        self.assertEqual(by_name(result)["Costa Pons, Oriol"]["grades"], ["7,25", "0"])
+        self.assertEqual(result["text"], "Romero, Hugo\t8\tNP\n\t\t\nCosta Pons, Oriol\t7,25\t0\nMir Sala, Berta Aina\t0\t0\n")
+        self.assertEqual(len(result["warnings"]), 1)
+        self.assertIn("Examen", result["warnings"][0])
+
+        options.output = OUTPUT_GRADE
+        self.assertEqual(run(master=master, grades=grades, options=options)["text"], "8\tNP\n\t\n7,25\t0\n0\t0\n")
+
+    def test_empty_column_selection_retains_matches_without_copyable_output(self):
+        options = AddGradesOptions.from_json('{"grades_grade_columns": []}')
+        result = run(options=options)
+        self.assertEqual(result["grades"]["grade_columns"], [])
+        self.assertEqual(result["summary"]["matched"], 3)
+        self.assertEqual(result["output_rows"], [])
+        self.assertEqual(result["text"], "")
+
     def test_one_list_alone_is_described(self):
         result = preview(parse_table(MASTER_TEXT, keep_blank=True), None, AddGradesOptions())
         self.assertIsNotNone(result["master"])

@@ -1,13 +1,9 @@
-"""Add-grades tool: find each student's grade for the teacher's master list.
+"""Add-grades tool: find each student's grades for the teacher's master list.
 
 The master list has one row per student and any other columns (IDs, exercise
-grades...). The grades list has a name and a grade per student, often with the
-names written differently. The result has one row per master row after its header,
-in the same order, with the student's name and grade or only the grade, as tab-separated
-text ready to paste beside the master list in a spreadsheet.
-
-The grade is taken from the column headed "Qualificacions" and the new
-result has no header.
+grades...). The grades list has names and one or more grade columns. The result
+has one row per master row after its header, in the same order, with the selected
+grades and an optional student name. The tab-separated text has no header.
 
 Like the fill tool, the flow is stateless: the browser sends both lists and
 the teacher's choices every time and `preview()` returns everything.
@@ -50,7 +46,7 @@ NOT_NAMES_WARNING = (
 NO_STUDENTS_WARNING = "No s'ha trobat cap estudiant a la llista principal."
 NO_NUMERIC_GRADES_WARNING = (
     "La columna «{column}» de la llista de notes no té cap nota numèrica. "
-    "Tria la columna de les notes a «Nota»."
+    "Revisa la selecció a «Columnes de notes»."
 )
 
 
@@ -66,6 +62,8 @@ class AddGradesOptions:
     # Master row -> grades row chosen by the teacher, or NO_STUDENT for a 0.
     matches: dict[int, int] = field(default_factory=dict)
     output: str = OUTPUT_NAME_AND_GRADE
+    # None detects a default; an empty list is an explicit empty selection.
+    grades_grade_columns: list[int] | None = None
 
     @classmethod
     def from_json(cls, text: str | None) -> "AddGradesOptions":
@@ -75,6 +73,12 @@ class AddGradesOptions:
             value = data.get(key)
             return int(value) if isinstance(value, (int, str)) and str(value).lstrip("-").isdigit() else None
 
+        columns = data.get("grades_grade_columns")
+        if columns is not None and (
+            not isinstance(columns, list) or any(type(column) is not int for column in columns)
+        ):
+            raise ValueError("Invalid grade column selection")
+
         return cls(
             master_header_row=optional_int("master_header_row"),
             master_name_column=optional_int("master_name_column"),
@@ -83,6 +87,7 @@ class AddGradesOptions:
             grades_grade_column=optional_int("grades_grade_column"),
             matches={int(key): int(value) for key, value in (data.get("matches") or {}).items()},
             output=OUTPUT_GRADE if data.get("output") == OUTPUT_GRADE else OUTPUT_NAME_AND_GRADE,
+            grades_grade_columns=columns,
         )
 
 
@@ -194,12 +199,24 @@ def default_grade_column(grades: StudentList) -> int:
     rows, student_rows, name_column = grades.rows, grades.student_rows, grades.name_column
     if grades.header_row != NO_HEADER:
         for column, header in enumerate(rows[grades.header_row]):
-            if strip_accents(header).casefold().strip().startswith(GRADE_HEADER_PREFIX):
+            if column != name_column and strip_accents(header).casefold().strip().startswith(GRADE_HEADER_PREFIX):
                 return column
     for column in reversed(range(len(rows[0]))):
         if column != name_column and any(rows[row][column] for row in student_rows):
             return column
     return 0 if name_column else 1
+
+
+def selected_grade_columns(grades: StudentList, options: AddGradesOptions) -> list[int]:
+    if options.grades_grade_columns is None:
+        column = options.grades_grade_column
+        if column is not None and 0 <= column < len(grades.columns):
+            return [column]
+        return [default_grade_column(grades)]
+    return sorted({
+        column for column in options.grades_grade_columns
+        if 0 <= column < len(grades.columns) and column != grades.name_column
+    })
 
 
 @dataclass
@@ -307,57 +324,67 @@ def preview(master_rows: list[list[str]] | None, grade_rows: list[list[str]] | N
         result["master"] = master.to_preview()
         result["warnings"] += master_warnings(master)
     if grades:
-        grade_column = options.grades_grade_column
-        if grade_column is None or not 0 <= grade_column < len(grade_rows[0]):
-            grade_column = default_grade_column(grades)
-        result["grades"] = grades.to_preview() | {"grade_column": grade_column}
-        values = [grades.rows[row][grade_column] for row in grades.student_rows]
-        if any(value not in NO_GRADE_VALUES for value in values) and not any(parse_number(value) is not None for value in values):
-            result["warnings"].append(NO_NUMERIC_GRADES_WARNING.format(column=grades.columns[grade_column]))
+        grade_columns = selected_grade_columns(grades, options)
+        result["grades"] = grades.to_preview() | {
+            "grade_columns": grade_columns,
+            "grade_column": grade_columns[0] if grade_columns else None,
+        }
+        for column in grade_columns:
+            values = [grades.rows[row][column] for row in grades.student_rows]
+            if any(value not in NO_GRADE_VALUES for value in values) and not any(parse_number(value) is not None for value in values):
+                result["warnings"].append(NO_NUMERIC_GRADES_WARNING.format(column=grades.columns[column]))
     if master is None or grades is None:
         return result
 
-    # A student listed without a grade gets a 0, like one not listed at all.
-    def grade_of(row: int) -> str:
-        value = grades.rows[row][grade_column]
-        return MISSING_GRADE if value in NO_GRADE_VALUES else with_decimal_comma(value)
+    def grades_of(row: int | None) -> list[str]:
+        if row is None:
+            return [MISSING_GRADE] * len(grade_columns)
+        values = (grades.rows[row][column] for column in grade_columns)
+        return [MISSING_GRADE if value in NO_GRADE_VALUES else with_decimal_comma(value) for value in values]
 
     plans = plan_students(master, grades, options)
-    by_row = {plan.row: plan for plan in plans}
-    result["students"] = [
-        {
+    grades_by_row = {}
+    for plan in plans:
+        values = grades_of(plan.grades_row)
+        grades_by_row[plan.row] = values
+        result["students"].append({
             "row": plan.row,
             "name": plan.name,
             "status": plan.status,
             "grades_row": plan.grades_row,
             "grades_name": grades.name(plan.grades_row) if plan.grades_row is not None else "",
-            "grade": grade_of(plan.grades_row) if plan.grades_row is not None else MISSING_GRADE,
+            "grades": values,
+            "grade": values[0] if values else "",
             "alternatives": [grades.name(row) for row in plan.alternatives],
-        }
-        for plan in plans
-    ]
+        })
     used = {plan.grades_row for plan in plans if plan.grades_row is not None}
-    result["unused"] = [
-        {"row": row, "name": grades.name(row), "grade": grade_of(row)} for row in grades.student_rows if row not in used
-    ]
+    for row in grades.student_rows:
+        if row not in used:
+            values = grades_of(row)
+            result["unused"].append({
+                "row": row,
+                "name": grades.name(row),
+                "grades": values,
+                "grade": values[0] if values else "",
+            })
     result["summary"] = {
         "students": len(plans),
         "matched": len(used),
         "review": sum(1 for plan in plans if plan.status in (STATUS_PROBABLE, STATUS_AMBIGUOUS)),
         "missing": sum(1 for plan in plans if plan.grades_row is None),
     }
+    if not grade_columns:
+        return result
 
     # No header: the result starts after the master's header row and keeps
     # one row per master row from there, blank rows included, so it lines up
     # when pasted beside the first student. Empty rows at the end are dropped.
     first_row = master.header_row + 1
+    blank_grades = [""] * len(grade_columns)
     output_rows = []
     for index, row in enumerate(master.rows[first_row:], start=first_row):
-        grade = ""
-        if index in by_row:
-            plan = by_row[index]
-            grade = grade_of(plan.grades_row) if plan.grades_row is not None else MISSING_GRADE
-        output_rows.append([row[master.name_column], grade] if options.output == OUTPUT_NAME_AND_GRADE else [grade])
+        values = grades_by_row.get(index, blank_grades)
+        output_rows.append([row[master.name_column], *values] if options.output == OUTPUT_NAME_AND_GRADE else values)
     while output_rows and not any(output_rows[-1]):
         output_rows.pop()
     result["output_rows"] = output_rows

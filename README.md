@@ -202,10 +202,10 @@ Each step says in one line what it expects, with the details below the box.
    the header are allowed.
 2. **Grades to add**: usually the assignment grading worksheet downloaded
    from Moodle (*Full de qualificacions*), or any list with at least a column
-   of names and a column of grades. The grade comes from the column headed
-   `Qualificació` or `Qualificacions` (ignoring accents and case); without
-   one, from the last column with values. Moodle's `-` (no grade) counts as
-   no grade.
+   of names and one or more grade columns. `Qualificació` or `Qualificacions`
+   is selected by default (ignoring accents and case), falling back to the
+   last column with values. Use **Columnes de notes** in the review step to
+   select one or more columns. Moodle's `-` counts as a missing grade.
 
 Problems are reported as soon as a list is in, without waiting for the
 other one:
@@ -213,16 +213,15 @@ other one:
 - an error, above the boxes, when no column of names is found or when the
   grades list has a single column;
 - a warning, below the boxes, when most "names" in the main list are a
-  single word (IDs, groups, first names only), or when the grade column has
-  no numbers.
+  single word (IDs, groups, first names only), or when a selected grade column
+  has text values but no numbers.
 
 A row with a number in it is never taken as a header, and neither is a
 guessed header that matches a student of the other list, so lists that start
 directly with a student work too. Pasted text is split on tabs only, so a
 one-column paste of `Cognoms, Nom` stays whole. The preview names the header
 row left out of the result, in case a student was taken for it. The header
-rows, the name columns and the grade column can all be changed in the review
-step.
+rows and the name columns can also be changed in the review step.
 
 ### How names are matched
 
@@ -237,20 +236,21 @@ Unlike the fill tool, close matches (*Semblant*) are used straight away;
 they are highlighted, like ambiguous students (*Dubtós*), so they can be
 checked and changed. The matching table is sorted alphabetically.
 
-- Students of the main list without a grade get a `0`, whether they are
-  missing from the grades list or listed with an empty grade (or `-`).
-- Students of the grades list missing from the main list are shown in a
-  warning, with their grade, and are left out.
+- Each selected column gets a `0` for a student missing from the grades list.
+  For matched students, an empty cell or `-` becomes `0` in that column.
+- Students who only appear in the grades list are shown in a warning with
+  their selected grades and are left out of the result.
 
 ### What is copied
 
 No header: one row per row of the main list after its header, in the same
 order and blank rows included, so the result lines up when pasted beside the
-first student. Empty rows at the end, such as footers, are left out. Each row has either:
+first student. Empty rows at the end, such as footers, are left out. The
+selected columns keep their order in the grades list. Choose one of these formats.
 
-- **Nom i nota**: the student's name, as written in the main list, and the
-  grade; or
-- **Només la nota**: the grade alone.
+- **Nom i notes** copies the student's name as written in the main list,
+  followed by the selected grades.
+- **Només les notes** copies just the selected grades.
 
 The choice is remembered in the browser. Grades are copied with a
 decimal comma (`7.25` becomes `7,25`); text such as `NP` stays as written. The text is tab-separated, which is what
