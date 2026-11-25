@@ -140,6 +140,9 @@ file with another extension is rejected before it is sent.
   unless *Inclou la fila al peu* is checked; they are then shown as a footer
   row, without the percents already shown as weights.
 - A row-counter column (`1, 2, 3…`) is left out of the feedback by default.
+- Use **Totes les columnes** to select or clear all feedback columns at once.
+  A dash in the checkbox means only some columns are selected. Clearing the
+  selection keeps the weights you entered for when you select columns again.
 
 Every guess can be changed in the review step.
 
@@ -184,9 +187,9 @@ treats every existing grade as newer and skips it.
 
 ## Add grades
 
-This tool finds each student's grade for the teacher's own student list, for
-example the grades of a new exam, and copies them to the clipboard with one
-click, ready to paste into a spreadsheet beside that list.
+This tool matches grades to the teacher's own student list and copies one or
+more grade columns to the clipboard, ready to paste beside that list in a
+spreadsheet.
 
 ### The two lists
 
@@ -205,7 +208,10 @@ Each step says in one line what it expects, with the details below the box.
    of names and one or more grade columns. `Qualificació` or `Qualificacions`
    is selected by default (ignoring accents and case), falling back to the
    last column with values. Use **Columnes de notes** in the review step to
-   select one or more columns. Moodle's `-` counts as a missing grade.
+   select one or more columns. **Totes les columnes** selects all available
+   grade columns or clears them when all are selected. A dash means only some
+   are selected. Select at least one column to copy the result. Moodle's `-`
+   counts as a missing grade.
 
 Problems are reported as soon as a list is in, without waiting for the
 other one:
