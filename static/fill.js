@@ -19,7 +19,7 @@
   const worksheetInput = document.getElementById("worksheet-input");
   const worksheetZone = document.getElementById("worksheet-zone");
   const worksheetStatus = document.getElementById("worksheet-status");
-  const segments = Array.from(document.querySelectorAll("#panel-fill .segment"));
+  const segments = Array.from(document.querySelectorAll("#panel-fill .segment[data-source]"));
   const pasteBlock = document.getElementById("grades-paste-block");
   const fileBlock = document.getElementById("grades-file-block");
   const gradesText = document.getElementById("grades-text");
@@ -30,7 +30,7 @@
   const headerRowSelect = document.getElementById("opt-header-row");
   const nameColumnSelect = document.getElementById("opt-name-column");
   const gradeColumnSelect = document.getElementById("opt-grade-column");
-  const layoutSelect = document.getElementById("opt-layout");
+  const layoutSegments = Array.from(document.querySelectorAll("#opt-layout .segment"));
   const feedbackColumns = document.getElementById("opt-feedback-columns");
   const weightsHelp = document.getElementById("weights-help");
   const includeFooterField = document.getElementById("opt-include-footer-field");
@@ -60,10 +60,38 @@
       name_column: null,
       grade_column: null,
       feedback_columns: null,
-      layout: layoutSelect.value,
+      layout: layoutSegments.find((segment) => segment.classList.contains("is-active")).dataset.layout,
       weights: null,
       include_footer: includeFooterInput.checked,
     };
+  }
+
+  // The table orientation is remembered like the grades source.
+  const LAYOUT_KEY = "gradeskit.fill.layout";
+
+  function savedLayout() {
+    try {
+      return localStorage.getItem(LAYOUT_KEY) === "vertical" ? "vertical" : "horizontal";
+    } catch {
+      return "horizontal";
+    }
+  }
+
+  function rememberLayout(layout) {
+    try {
+      localStorage.setItem(LAYOUT_KEY, layout);
+    } catch {
+      // Not remembered; the choice still applies until the page is reloaded.
+    }
+  }
+
+  function selectLayout(layout) {
+    state.options.layout = layout;
+    for (const segment of layoutSegments) {
+      const isActive = segment.dataset.layout === layout;
+      segment.classList.toggle("is-active", isActive);
+      segment.setAttribute("aria-pressed", String(isActive));
+    }
   }
 
   function hasGrades() {
@@ -408,10 +436,15 @@
     schedulePreview();
   });
 
-  layoutSelect.addEventListener("change", () => {
-    state.options.layout = layoutSelect.value;
-    schedulePreview();
-  });
+  for (const segment of layoutSegments) {
+    segment.addEventListener("click", () => {
+      if (segment.dataset.layout === state.options.layout) return;
+      selectLayout(segment.dataset.layout);
+      rememberLayout(state.options.layout);
+      schedulePreview();
+    });
+  }
+  selectLayout(savedLayout());
 
   const syncFeedbackSelection = bindColumnSelection(feedbackColumns, document.getElementById("opt-feedback-select-all"), (selected) => {
     state.options.feedback_columns = selected;

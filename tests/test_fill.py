@@ -14,6 +14,7 @@ from pathlib import Path
 from gradeskit.feedback_html import (
     FAIL_STYLE,
     HEADER_STYLE,
+    ROW_HEADER_STYLE,
     LAYOUT_VERTICAL,
     STRIPE_BACKGROUND,
     TITLE_STYLE,
@@ -187,6 +188,13 @@ class FeedbackTests(unittest.TestCase):
         cells = re.findall(r'<td style="([^"]*)">([^<]*)</td>', html)
         self.assertEqual([FAIL_STYLE in style for style, _ in cells], [True, False, True, True, False])
         self.assertNotIn("bold", "".join(style for style, _ in cells))
+
+    def test_vertical_row_headers_are_left_aligned(self):
+        html = render_feedback_table(["Examen"], ["8"], [], title="A1", layout=LAYOUT_VERTICAL)
+        self.assertIn(f'<th style="{ROW_HEADER_STYLE}">Examen</th>', html)
+        self.assertIn("text-align:left", ROW_HEADER_STYLE)
+        self.assertIn(f'<th colspan="2" style="{TITLE_STYLE}">A1</th>', html)
+        self.assertIn('<td style="text-align:center;vertical-align:middle">8</td>', html)
 
     def test_vertical_rows_are_striped(self):
         html = render_feedback_table(["A", "B", "C"], ["6", "7", "8"], [], layout=LAYOUT_VERTICAL)

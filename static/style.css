@@ -443,7 +443,8 @@ textarea:focus {
 
 .setting > span,
 .setting-group > span,
-.column-picker-heading > span {
+.column-picker-heading > span,
+.group-heading > span {
   font-weight: 700;
   font-size: 0.92rem;
 }
@@ -609,6 +610,59 @@ textarea:focus {
 
 .sheet-preview td.col-off {
   color: rgba(28, 26, 24, 0.35);
+}
+
+.group-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+}
+
+/* Compact icon toggle for the feedback table orientation. */
+.layout-choice {
+  padding: 0.2rem;
+  gap: 0.2rem;
+  border-radius: 12px;
+}
+
+.layout-choice .segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9px;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.layout-choice svg {
+  width: 20px;
+  height: 14px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.layout-choice svg .fill {
+  fill: currentColor;
+  stroke: none;
+  opacity: 0.35;
+}
+
+.layout-choice .segment.is-active svg {
+  color: var(--accent);
+}
+
+.layout-choice .segment.is-active svg .fill {
+  opacity: 0.85;
+}
+
+.layout-choice .segment:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* Approximates how Moodle (Bootstrap) shows the feedback table. */

@@ -23,6 +23,9 @@ FAIL_MARKS = {"NP"}
 CENTER = "text-align:center;vertical-align:middle"
 TITLE_STYLE = f"{CENTER};background-color:#38761d;color:#ffffff;font-weight:bold"
 HEADER_STYLE = f"{CENTER};background-color:#6aa84f;color:#ffffff;font-weight:bold"
+# Row headers in the vertical table are text read down a column, so they are
+# left-aligned like text in a spreadsheet.
+ROW_HEADER_STYLE = HEADER_STYLE.replace("text-align:center", "text-align:left")
 STRIPE_BACKGROUND = "background-color:#d9ead3"
 FAIL_STYLE = "color:#e00000"
 
@@ -70,7 +73,7 @@ def render_feedback_table(
         width = 2 + len(footer_rows)
         title_html = f"<thead><tr>{_cell('th', title, TITLE_STYLE, colspan=width)}</tr></thead>" if title else ""
         body = "".join(
-            f"<tr>{_cell('th', header, HEADER_STYLE)}"
+            f"<tr>{_cell('th', header, ROW_HEADER_STYLE)}"
             + _value_cells([value], striped=index % 2 == 1)
             + _value_cells([row[index] for row in footer_rows], striped=index % 2 == 1, small=True)
             + "</tr>"
