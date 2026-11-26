@@ -122,9 +122,20 @@ file with another extension is rejected before it is sent.
 
 ### How the grades sheet is read
 
-- The header row is the first row that is (almost) as full as the widest
-  rows, so title rows such as `TOTAL A1 (1a convocatòria)` are skipped and
-  used as the feedback table title.
+- The header row is the row just above the first student, so title rows such
+  as `TOTAL A1 (1a convocatòria)` are skipped and used as the feedback table
+  title.
+- **Two-row headers** are recognised: when the row above the header labels the
+  activities (`Conceptes 01` merged over `intent 1 · intent 2 · total`), the
+  columns are grouped by activity. Activities can have any number of columns
+  (two, three or four attempts and a total), and the last column of each
+  activity is its result. An activity with a single column takes its name from
+  both header cells (`Projecte` over `final` → `Projecte final`), or from the
+  top cell alone when the one below is empty. The row above the header only
+  counts as activity labels when at least two of its cells sit over columns
+  of grades, so a title split over two cells (`Curs 2025-26` … `Grup A`) stays
+  a title. The *Fila de capçalera* list offers *Files 1–2* to turn the
+  grouping on or off.
 - The name column is the one whose values look most like names
   (`Cognoms, Nom` or `Nom Cognoms`).
 - The **grade is the last column** by default; any other column can be
@@ -132,7 +143,8 @@ file with another extension is rejected before it is sent.
 - Percent cells (`50%`) in the rows after the last student, or in a row of
   percents above the header, are read as the **weight** of each column and
   shown in its feedback header: `Examen (50%)`. Columns whose header already
-  includes a percent are left as they are.
+  includes a percent are left as they are. In a grouped sheet the weight
+  belongs to the whole activity, whichever of its columns holds it.
 - Weights can be typed, changed or cleared next to each feedback column, which
   helps when the pasted grades have no percents. `50`, `50%`, `12,5%` and
   `0,5` are accepted.
@@ -140,6 +152,13 @@ file with another extension is rejected before it is sent.
   unless *Inclou la fila al peu* is checked; they are then shown as a footer
   row, without the percents already shown as weights.
 - A row-counter column (`1, 2, 3…`) is left out of the feedback by default.
+- **Identifier columns** are left out of the feedback by default too: DNI/NIE,
+  e-mails, masked values (`****0528Q`) and columns of large unique whole
+  numbers (random keys). A note lists them, and they can still be ticked.
+- In a grouped sheet each activity is one chip with a check per column and a
+  single weight. *Inclou a cada activitat* ticks or clears one column label
+  (`intent 2`, `total`…) in every activity at once, for example to show only
+  the totals.
 - Use **Totes les columnes** to select or clear all feedback columns at once.
   A dash in the checkbox means only some columns are selected. Clearing the
   selection keeps the weights you entered for when you select columns again.
@@ -147,6 +166,19 @@ file with another extension is rejected before it is sent.
 - The **Horitzontal / Vertical** toggle next to the example comment sets the
   feedback table's orientation. Vertical puts one row per column, which reads
   better when there are many columns. The choice is remembered in the browser.
+  With a grouped sheet, horizontal keeps both header rows (each activity
+  spanning its columns) and vertical becomes a grid: one row per activity, one
+  column per attempt label and the result last, in bold. Activities with fewer
+  attempts leave cells empty, and a single-column activity puts its value in
+  the result column. Attempt labels are matched without case, accents or
+  spaces (`Intent 1` = `intent1`). If activities name their result
+  differently (`total`, `nota`), the result column shows each name:
+  `Total / Nota`.
+- With a grouped sheet, *Mostra «—» en lloc de 0* (off by default) writes `—`
+  instead of a red `0,00` for attempts a student did not need: the zeros after
+  their last graded attempt, when the activity's result equals that attempt
+  (`10,00 · — · 10,00`). A zero that counts towards the result
+  (`6,00 · 0,00 · 1,20`), or an activity with no grade at all, is kept.
 
 Every guess can be changed in the review step.
 
@@ -178,7 +210,8 @@ recognised (strings taken from the official language packs).
 - Feedback is a single-line HTML table with Bootstrap classes
   (`table table-sm table-bordered`); Moodle stores imported comments as HTML.
   It has the sheet title, the chosen columns with their weights in the
-  headers, and the footer row only when *Inclou la fila al peu* is checked.
+  headers, and the footer row only when *Inclou la fila al peu* is checked
+  (in the grid, footer values appear in small type under each value).
 - The file is UTF-8 and comma-separated, the defaults of Moodle's upload form.
 
 ### Uploading to Moodle

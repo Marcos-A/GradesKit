@@ -8,8 +8,15 @@ the user's choices every time; `preview()` describes what would happen and
 import json
 from dataclasses import dataclass, field
 
-from gradeskit.feedback_html import LAYOUT_HORIZONTAL, LAYOUT_VERTICAL, render_feedback_table
-from gradeskit.grades_sheet import GradesSheet, analyse_grades_sheet, format_weight
+from gradeskit.feedback_html import (
+    LAYOUT_HORIZONTAL,
+    LAYOUT_VERTICAL,
+    FeedbackEntry,
+    FeedbackGroup,
+    render_feedback_table,
+    render_grouped_table,
+)
+from gradeskit.grades_sheet import ColumnGroup, GradesSheet, analyse_grades_sheet, format_weight
 from gradeskit.matching import STATUS_EXACT, STATUS_NONE, STATUS_PROBABLE, Person, match_people
 from gradeskit.moodle_worksheet import (
     ROLE_EMAIL,
@@ -29,6 +36,7 @@ STATUS_MANUAL = "manual"
 STATUS_EXCLUDED = "excluded"
 APPLIED_STATUSES = {STATUS_EXACT, STATUS_CONFIRMED, STATUS_MANUAL}
 NO_STUDENT = -1
+UNUSED_ATTEMPT_MARK = "—"
 
 NOTHING_TO_FILL_MESSAGE = "Cap participant té una nota assignada. Revisa la correspondència d'estudiants."
 NO_FEEDBACK_COLUMN_WARNING = (
@@ -44,6 +52,8 @@ EXISTING_GRADES_WARNING = (
 @dataclass
 class FillOptions:
     header_row: int | None = None
+    # Whether the row above the header labels the activities; None detects it.
+    group_row: bool | None = None
     name_column: int | None = None
     grade_column: int | None = None
     feedback_columns: list[int] | None = None
@@ -53,6 +63,8 @@ class FillOptions:
     weights: dict[int, str] | None = None
     # Show the footer rows (maximum grades...) under the feedback table.
     include_footer: bool = False
+    # Show "—" instead of a 0 for attempts the student did not need.
+    hide_unused_attempts: bool = False
     # Participant identifier -> grades sheet row chosen or confirmed by the
     # teacher, or NO_STUDENT to leave that participant untouched.
     matches: dict[str, int] = field(default_factory=dict)
@@ -69,12 +81,14 @@ class FillOptions:
         weights = data.get("weights")
         return cls(
             header_row=optional_int("header_row"),
+            group_row=data["group_row"] if isinstance(data.get("group_row"), bool) else None,
             name_column=optional_int("name_column"),
             grade_column=optional_int("grade_column"),
             feedback_columns=[int(value) for value in feedback_columns] if isinstance(feedback_columns, list) else None,
             layout=LAYOUT_VERTICAL if data.get("layout") == LAYOUT_VERTICAL else LAYOUT_HORIZONTAL,
             weights={int(key): str(value) for key, value in weights.items()} if isinstance(weights, dict) else None,
             include_footer=data.get("include_footer") is True,
+            hide_unused_attempts=data.get("hide_unused_attempts") is True,
             matches={str(key): int(value) for key, value in (data.get("matches") or {}).items()},
         )
 
@@ -118,6 +132,7 @@ def load_grades_sheet(rows: list[list[str]], options: FillOptions) -> GradesShee
         name_column=options.name_column,
         grade_column=options.grade_column,
         feedback_columns=options.feedback_columns,
+        group_row=options.group_row,
     )
 
 
@@ -141,9 +156,74 @@ def resolve_weights(sheet: GradesSheet, options: FillOptions) -> tuple[dict[int,
     return weights, invalid
 
 
+def group_weight(group: ColumnGroup, weights: dict[int, str]) -> str | None:
+    """An activity's weight: the first one found in any of its columns."""
+
+    return next((weights[column] for column in group.columns if column in weights), None)
+
+
+def _with_weight(label: str, weight: str | None) -> str:
+    return f"{label} ({weight})" if weight else label
+
+
+def unused_attempts(group, values: list[str]) -> set[int]:
+    """Attempt columns of an activity that hold a 0 only because they were not taken.
+
+    These are the zeros after the last attempt with a grade, when the result
+    equals that attempt: "10,00 · 0,00 · 10,00" means there was no second try.
+    A 0 that could be a real grade ("6,00 · 0,00 · 1,20") is kept.
+    """
+
+    if len(group.columns) < 2:
+        return set()
+    result = parse_number(values[group.columns.index(group.result_column)])
+    attempts = group.columns[:-1]
+    numbers = [parse_number(values[position]) for position in range(len(attempts))]
+    trailing: set[int] = set()
+    for column, number in zip(reversed(attempts), reversed(numbers)):
+        if number != 0:
+            last = number
+            break
+        trailing.add(column)
+    else:
+        return set()
+    if result is None or last is None or result == 0 or abs(result - last) > 0.005:
+        return set()
+    return trailing
+
+
 def student_feedback(sheet: GradesSheet, student_row: int, options: FillOptions) -> str:
     columns = sheet.feedback_columns
     weights, _ = resolve_weights(sheet, options)
+    if sheet.grouped:
+        selected = set(columns)
+        # Column -> its footer values, one per footer row.
+        footers = (
+            dict(zip(columns, zip(*sheet.footer_values(columns)))) if options.include_footer and sheet.footer_rows else {}
+        )
+        row = sheet.rows[student_row]
+        hidden = (
+            {column for group in sheet.groups for column in unused_attempts(group, [row[index] for index in group.columns])}
+            if options.hide_unused_attempts
+            else set()
+        )
+        groups = [
+            FeedbackGroup(
+                label=_with_weight(group.label, group_weight(group, weights)),
+                entries=[
+                    FeedbackEntry(
+                        sub=sub,
+                        value=UNUSED_ATTEMPT_MARK if column in hidden else row[column],
+                        footers=list(footers.get(column, ())),
+                        result=column == group.result_column,
+                    )
+                    for column, sub in zip(group.columns, group.subs)
+                    if column in selected
+                ],
+            )
+            for group in sheet.groups
+        ]
+        return render_grouped_table(groups, title=sheet.title, layout=options.layout)
     return render_feedback_table(
         headers=[
             f"{sheet.columns[column]} ({weights[column]})" if column in weights else sheet.columns[column]

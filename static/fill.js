@@ -32,9 +32,13 @@
   const gradeColumnSelect = document.getElementById("opt-grade-column");
   const layoutSegments = Array.from(document.querySelectorAll("#opt-layout .segment"));
   const feedbackColumns = document.getElementById("opt-feedback-columns");
+  const feedbackSubs = document.getElementById("opt-feedback-subs");
   const weightsHelp = document.getElementById("weights-help");
+  const identifiersHelp = document.getElementById("identifiers-help");
   const includeFooterField = document.getElementById("opt-include-footer-field");
   const includeFooterInput = document.getElementById("opt-include-footer");
+  const hideUnusedField = document.getElementById("opt-hide-unused-field");
+  const hideUnusedInput = document.getElementById("opt-hide-unused");
   const sheetPreview = document.getElementById("sheet-preview");
   const feedbackSample = document.getElementById("feedback-sample");
   const matchSection = document.getElementById("match-section");
@@ -57,12 +61,14 @@
   function emptyOptions() {
     return {
       header_row: null,
+      group_row: null,
       name_column: null,
       grade_column: null,
       feedback_columns: null,
       layout: layoutSegments.find((segment) => segment.classList.contains("is-active")).dataset.layout,
       weights: null,
       include_footer: includeFooterInput.checked,
+      hide_unused_attempts: hideUnusedInput.checked,
     };
   }
 
@@ -189,11 +195,92 @@
       : '<span class="upload-placeholder">Encara no s\'ha seleccionat cap fitxer.</span>';
   }
 
-  function renderSettings(grades) {
-    headerRowSelect.innerHTML = grades.rows
-      .slice(0, HEADER_ROW_CHOICES)
-      .map((row, index) => option(index, `Fila ${index + 1}: ${truncate(row.filter(Boolean).join(" · "))}`, index === grades.header_row))
+  // A row above the header can label the activities when it has several
+  // labels and is not a row of weights.
+  function canBeGroupRow(row) {
+    const filled = row.filter(Boolean);
+    return filled.length >= 2 && !filled.every((cell) => /^\d+(?:[.,]\d+)?\s*%$/.test(cell));
+  }
+
+  // Options are "3" (header on row 3) or "3+" (rows 2 and 3, activity labels
+  // on top).
+  function headerRowOptions(grades) {
+    const rows = grades.rows.slice(0, HEADER_ROW_CHOICES);
+    const twoRows = grades.group_row !== null;
+    return rows
+      .flatMap((row, index) => {
+        const single = option(index, `Fila ${index + 1}: ${truncate(row.filter(Boolean).join(" · "))}`, index === grades.header_row && !twoRows);
+        if (index === 0 || !canBeGroupRow(rows[index - 1])) return [single];
+        const label = `Files ${index}–${index + 1}: ${truncate(rows[index - 1].filter(Boolean).join(" · "))}`;
+        return [single, option(`${index}+`, label, index === grades.header_row && twoRows)];
+      })
       .join("");
+  }
+
+  function weightField(key, label, weight, invalid) {
+    return `<input type="text" class="weight-input${invalid ? " is-invalid" : ""}" data-weight="${key}" value="${escapeHtml(weight)}" placeholder="pes" inputmode="decimal" autocomplete="off" aria-label="Pes de ${escapeHtml(label)}"${invalid ? ' title="No és un percentatge vàlid"' : ""}>`;
+  }
+
+  function columnCheck(index, label, checked) {
+    return `<label><input type="checkbox" value="${index}"${checked ? " checked" : ""}><span>${escapeHtml(label)}</span></label>`;
+  }
+
+  // Each activity gets one chip; its weight goes with the activity, keyed by
+  // the result column.
+  function columnChips(grades) {
+    const invalid = new Set(grades.invalid_weights);
+    const typedWeight = (index) => (state.options.weights ? state.options.weights[index] || "" : "");
+    return grades.groups
+      .map((group) => {
+        const columns = group.columns.filter((index) => index !== grades.name_column);
+        if (!columns.length) return "";
+        const key = group.columns[group.columns.length - 1];
+        // A weight that could not be read keeps the teacher's text so it can be fixed.
+        const found = group.columns.map((index) => grades.weights[index]).find(Boolean) || "";
+        const weight = invalid.has(key) ? typedWeight(key) : found;
+        const field = weightField(key, group.label, weight, invalid.has(key));
+        if (group.columns.length === 1) {
+          return `<span class="chip-toggle">${columnCheck(key, group.label, grades.feedback_columns.includes(key))}${field}</span>`;
+        }
+        const subs = group.columns
+          .map((index, position) => columnCheck(index, group.subs[position], grades.feedback_columns.includes(index)))
+          .join("");
+        return `<span class="chip-toggle chip-group"><span class="chip-group-label">${escapeHtml(group.label)}</span><span class="chip-group-columns">${subs}</span>${field}</span>`;
+      })
+      .join("");
+  }
+
+  // Shortcuts that tick or untick one column label ("intent 2", "total") in
+  // every activity at once.
+  function renderSubFilter(grades) {
+    const labels = new Map();
+    for (const group of grades.groups) {
+      if (group.columns.length < 2) continue;
+      group.columns.forEach((index, position) => {
+        // Same comparison as the comment grid: no case, accents or spaces.
+        const key = group.subs[position].normalize("NFD").replace(/\p{Mn}/gu, "").toLocaleLowerCase().replace(/\s+/g, "");
+        if (!labels.has(key)) labels.set(key, { label: group.subs[position], columns: [] });
+        labels.get(key).columns.push(index);
+      });
+    }
+    // Attempts first, then the result labels ("total"), as in the sheet.
+    const isResult = ({ columns }) => grades.groups.some((group) => group.columns.length > 1 && group.columns[group.columns.length - 1] === columns[0]);
+    const ordered = Array.from(labels.values()).sort((a, b) => isResult(a) - isResult(b));
+    feedbackSubs.hidden = labels.size < 2;
+    feedbackSubs.innerHTML = feedbackSubs.hidden
+      ? ""
+      : `<span>Inclou a cada activitat:</span>${ordered
+          .map(({ label, columns }) => {
+            const chosen = columns.filter((index) => grades.feedback_columns.includes(index)).length;
+            const checked = chosen === columns.length ? " checked" : "";
+            return `<label class="inline-check"><input type="checkbox" data-sub-columns="${columns.join(",")}" data-partial="${chosen > 0 && chosen < columns.length}"${checked}><span>${escapeHtml(label)}</span></label>`;
+          })
+          .join("")}`;
+    for (const input of feedbackSubs.querySelectorAll("[data-partial='true']")) input.indeterminate = true;
+  }
+
+  function renderSettings(grades) {
+    headerRowSelect.innerHTML = headerRowOptions(grades);
     nameColumnSelect.innerHTML = grades.columns
       .map((label, index) => option(index, label, index === grades.name_column))
       .join("");
@@ -203,22 +290,8 @@
     // The chips are rebuilt on every preview, so keep the focus on the weight
     // field the teacher moved to.
     const focused = document.activeElement && document.activeElement.dataset.weight;
-    const invalid = new Set(grades.invalid_weights);
-    feedbackColumns.innerHTML = grades.columns
-      .map((label, index) => {
-        if (index === grades.name_column) {
-          return "";
-        }
-        const checked = grades.feedback_columns.includes(index) ? " checked" : "";
-        // A weight that could not be read keeps the teacher's text so it can be fixed.
-        const typed = state.options.weights ? state.options.weights[index] || "" : "";
-        const weight = invalid.has(index) ? typed : grades.weights[index] || "";
-        return `<span class="chip-toggle">
-          <label><input type="checkbox" value="${index}"${checked}><span>${escapeHtml(label)}</span></label>
-          <input type="text" class="weight-input${invalid.has(index) ? " is-invalid" : ""}" data-weight="${index}" value="${escapeHtml(weight)}" placeholder="pes" inputmode="decimal" autocomplete="off" aria-label="Pes de ${escapeHtml(label)}"${invalid.has(index) ? ' title="No és un percentatge vàlid"' : ""}>
-        </span>`;
-      })
-      .join("");
+    feedbackColumns.innerHTML = columnChips(grades);
+    renderSubFilter(grades);
     syncFeedbackSelection();
     if (focused !== undefined) {
       const field = feedbackColumns.querySelector(`[data-weight="${focused}"]`);
@@ -234,8 +307,16 @@
       weightsHelp.textContent = "El pes es mostra a la capçalera de cada columna, per exemple «Examen (50%)». Deixa'l buit per no mostrar-lo.";
     }
 
+    const identifiers = grades.identifier_columns.map((index) => grades.columns[index]);
+    identifiersHelp.hidden = identifiers.length === 0;
+    identifiersHelp.textContent = identifiers.length
+      ? `Les columnes amb identificadors (${identifiers.join(", ")}) no s’inclouen al comentari si no les marques.`
+      : "";
+
     includeFooterField.hidden = grades.footer_rows.length === 0;
     includeFooterInput.checked = state.options.include_footer;
+    hideUnusedField.hidden = !grades.grouped;
+    hideUnusedInput.checked = state.options.hide_unused_attempts;
   }
 
   function renderSheetPreview(grades) {
@@ -252,6 +333,7 @@
       .map((row, rowIndex) => {
         let rowClass = "row-ignored";
         if (footerRows.has(rowIndex)) rowClass = "row-footer";
+        else if (rowIndex === grades.group_row) rowClass = "row-header";
         else if (rowIndex < grades.header_row) rowClass = "row-title";
         else if (rowIndex === grades.header_row) rowClass = "row-header";
         else if (studentRows.has(rowIndex)) rowClass = "row-student";
@@ -420,7 +502,8 @@
     // A different header row changes every column, so the other choices are
     // detected again.
     resetGradeChoices();
-    state.options.header_row = Number(headerRowSelect.value);
+    state.options.header_row = Number.parseInt(headerRowSelect.value, 10);
+    state.options.group_row = headerRowSelect.value.endsWith("+");
     schedulePreview();
   });
 
@@ -451,6 +534,17 @@
     schedulePreview();
   });
 
+  feedbackSubs.addEventListener("change", (event) => {
+    const columns = event.target.dataset.subColumns;
+    if (columns === undefined) return;
+    for (const index of columns.split(",")) {
+      const input = feedbackColumns.querySelector(`input[type="checkbox"][value="${index}"]`);
+      if (input) input.checked = event.target.checked;
+    }
+    state.options.feedback_columns = syncFeedbackSelection();
+    schedulePreview();
+  });
+
   feedbackColumns.addEventListener("change", (event) => {
     if (event.target.dataset.weight === undefined) return;
     // Once the teacher edits a weight, every field is sent as it stands.
@@ -465,6 +559,11 @@
       event.preventDefault();
       event.target.blur();
     }
+  });
+
+  hideUnusedInput.addEventListener("change", () => {
+    state.options.hide_unused_attempts = hideUnusedInput.checked;
+    schedulePreview();
   });
 
   includeFooterInput.addEventListener("change", () => {
