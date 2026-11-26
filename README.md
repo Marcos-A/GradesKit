@@ -144,6 +144,10 @@ file with another extension is rejected before it is sent.
   A dash in the checkbox means only some columns are selected. Clearing the
   selection keeps the weights you entered for when you select columns again.
 
+- The **Horitzontal / Vertical** toggle next to the example comment sets the
+  feedback table's orientation. Vertical puts one row per column, which reads
+  better when there are many columns. The choice is remembered in the browser.
+
 Every guess can be changed in the review step.
 
 ### Matching students

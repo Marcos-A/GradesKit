@@ -143,13 +143,6 @@
               <span>Qualificació</span>
               <select id="opt-grade-column"></select>
             </label>
-            <label class="setting">
-              <span>Format del comentari</span>
-              <select id="opt-layout">
-                <option value="horizontal" selected>Taula horitzontal</option>
-                <option value="vertical">Taula vertical</option>
-              </select>
-            </label>
           </div>
 
           <div class="setting-group" role="group" aria-labelledby="opt-feedback-label">
@@ -174,7 +167,19 @@
           </div>
 
           <div class="setting-group">
-            <span>Comentari d’exemple</span>
+            <div class="group-heading">
+              <span>Comentari d’exemple</span>
+              <div class="segmented layout-choice" id="opt-layout" role="group" aria-label="Orientació de la taula del comentari">
+                <button type="button" class="segment is-active" data-layout="horizontal" aria-pressed="true" title="Capçaleres a dalt, una columna per apartat">
+                  <svg viewBox="0 0 20 14" aria-hidden="true"><rect x="0.75" y="0.75" width="18.5" height="12.5" rx="2"/><path class="fill" d="M2.75.75h14.5a2 2 0 0 1 2 2V7H.75V2.75a2 2 0 0 1 2-2z"/><path d="M7 .75v12.5M13 .75v12.5"/></svg>
+                  <span>Horitzontal</span>
+                </button>
+                <button type="button" class="segment" data-layout="vertical" aria-pressed="false" title="Capçaleres a l’esquerra, una fila per apartat; millor amb moltes columnes">
+                  <svg viewBox="0 0 20 14" aria-hidden="true"><rect x="0.75" y="0.75" width="18.5" height="12.5" rx="2"/><path class="fill" d="M2.75.75H10v12.5H2.75a2 2 0 0 1-2-2v-8.5a2 2 0 0 1 2-2z"/><path d="M.75 4.9h18.5M.75 9.1h18.5"/></svg>
+                  <span>Vertical</span>
+                </button>
+              </div>
+            </div>
             <div class="feedback-preview" id="feedback-sample"></div>
           </div>
 
