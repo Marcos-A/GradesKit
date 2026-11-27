@@ -216,6 +216,7 @@ def student_feedback(sheet: GradesSheet, student_row: int, options: FillOptions)
                         value=UNUSED_ATTEMPT_MARK if column in hidden else row[column],
                         footers=list(footers.get(column, ())),
                         result=column == group.result_column,
+                        final=column == sheet.grade_column,
                     )
                     for column, sub in zip(group.columns, group.subs)
                     if column in selected

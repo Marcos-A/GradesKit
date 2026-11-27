@@ -16,6 +16,7 @@ from gradeskit.feedback_html import (
     RESULT_STYLE,
     HEADER_STYLE,
     ROW_HEADER_STYLE,
+    LAYOUT_HORIZONTAL,
     LAYOUT_VERTICAL,
     STRIPE_BACKGROUND,
     TITLE_STYLE,
@@ -464,6 +465,17 @@ class GroupedFeedbackTests(unittest.TestCase):
         self.assertIn("<th></th><th>Intent 1</th><th>Total</th>", plain)
         self.assertIn("<tr><th>B</th><td>7</td><td>7</td></tr>", plain)
 
+    def test_final_grade_is_bold_in_both_layouts(self):
+        groups = [
+            FeedbackGroup("A", [FeedbackEntry("intent 1", "6", [], False), FeedbackEntry("total", "6,80", [], True)]),
+            FeedbackGroup("Examen", [FeedbackEntry("", "6,25", [], True)]),
+            FeedbackGroup("TOTAL", [FeedbackEntry("", "8,05", [], True, final=True)]),
+        ]
+        for layout in (LAYOUT_HORIZONTAL, LAYOUT_VERTICAL):
+            html = render_grouped_table(groups, layout=layout)
+            self.assertRegex(html, rf'<td style="[^"]*{RESULT_STYLE}">8,05</td>')
+            self.assertNotRegex(html, rf'<td style="[^"]*{RESULT_STYLE}">6,25</td>')
+
     def test_grid_names_every_result_label(self):
         groups = [
             FeedbackGroup("A", [FeedbackEntry("intent 1", "6", [], False), FeedbackEntry("total", "6", [], True)]),
@@ -500,6 +512,8 @@ class GroupedFeedbackTests(unittest.TestCase):
         self.assertIn("<th>Conceptes 01 (50%)</th>", plain)
         self.assertNotIn("12345678Z", plain)
         self.assertNotIn("5987", plain)
+        # TOTAL, the grade column, is the final grade.
+        self.assertRegex(result["feedback_sample"], rf'<td style="[^"]*{RESULT_STYLE}">[\d,]+</td></tr></tbody>')
 
 
 if __name__ == "__main__":

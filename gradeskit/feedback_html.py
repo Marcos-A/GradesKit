@@ -43,6 +43,8 @@ class FeedbackEntry:
     footers: list[str]
     # The activity's result column ("total"), the last one in the sheet.
     result: bool
+    # The student's final grade (the sheet's grade column), always in bold.
+    final: bool = False
 
 
 @dataclass
@@ -188,10 +190,10 @@ def _render_grid(groups: list[FeedbackGroup], title: str) -> str:
                 f'<td colspan="{len(attempts)}" style="{_value_style("", striped)}"></td>' if len(attempts) > 1
                 else _grid_cell(None, striped, False) * len(attempts)
             )
-            cells = gap + _grid_cell(result, striped, False)
+            cells = gap + _grid_cell(result, striped, bool(result and result.final))
         else:
             cells = "".join(_grid_cell(by_attempt.get(key), striped, False) for key in attempts)
-            cells += _grid_cell(result, striped, bool(attempts))
+            cells += _grid_cell(result, striped, bool(attempts) or bool(result and result.final))
         rows.append(f"<tr>{_cell('th', group.label, ROW_HEADER_STYLE)}{cells}</tr>")
     return f"{TABLE_OPEN}<thead>{title_html}{header_html}</thead><tbody>{''.join(rows)}</tbody></table>"
 
@@ -220,7 +222,7 @@ def _render_two_row_header(groups: list[FeedbackGroup], title: str) -> str:
         _cell(
             "td",
             entry.value,
-            _value_style(entry.value, False) + (f";{RESULT_STYLE}" if entry.result and len(group.entries) > 1 else ""),
+            _value_style(entry.value, False) + (f";{RESULT_STYLE}" if (entry.result and len(group.entries) > 1) or entry.final else ""),
         )
         for group in groups
         for entry in group.entries
