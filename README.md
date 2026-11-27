@@ -168,7 +168,8 @@ file with another extension is rejected before it is sent.
   better when there are many columns. The choice is remembered in the browser.
   With a grouped sheet, horizontal keeps both header rows (each activity
   spanning its columns) and vertical becomes a grid: one row per activity, one
-  column per attempt label and the result last, in bold. Activities with fewer
+  column per attempt label and the result last, in bold. The final grade (the
+  grade column, such as `TOTAL`) is in bold in both layouts. Activities with fewer
   attempts leave cells empty, and a single-column activity puts its value in
   the result column. Attempt labels are matched without case, accents or
   spaces (`Intent 1` = `intent1`). If activities name their result
